@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Simulador de Sistemas de Fuerzas</title>
+    
+    <!-- MathJax Configuration -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                displayMath: [['\\[', '\\]'], ['$$', '$$']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js" id="MathJax-script" async></script>
+
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --background-gradient-start: #f0f9ff;
+            --background-gradient-end: #e0f2fe;
+            --container-bg: rgba(255, 255, 255, 0.98);
+            --text-color: #1e293b;
+            --header-gradient-start: #2563eb;
+            --header-gradient-end: #3b82f6;
+            --force1-color: #ef4444;
+            --force2-color: #10b981;
+            --force3-color: #3b82f6;
+            --resultant-color: #f59e0b;
+            --equilibrant-color: #8b5cf6;
+            --component-color: #06b6d4;
+            --grid-color: rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, var(--background-gradient-start) 0%, var(--background-gradient-end) 100%);
+            color: var(--text-color);
+            padding: 20px;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--container-bg);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(45deg, var(--header-gradient-start), var(--header-gradient-end));
+            color: white;
+            text-align: center;
+            padding: 30px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.3em;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .nav-menu {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 15px 30px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .nav-menu ul {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            list-style: none;
+            flex-wrap: wrap;
+        }
+
+        .nav-menu a {
+            color: var(--secondary-color);
+            text-decoration: none;
+            font-weight: 600;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .nav-menu a:hover,
+        .nav-menu a:focus {
+            background-color: rgba(37, 99, 235, 0.1);
+            outline: none;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .controls {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid #e2e8f0;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .section-title {
+            color: var(--secondary-color);
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 24px;
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        .force-input {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .force-input:focus-within {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .force-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .force-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .input-field {
+            position: relative;
+        }
+
+        .input-field label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: #4a5568;
+            font-weight: 500;
+        }
+
+        .input-field input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid #cbd5e0;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .input-field input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .canvas-container {
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: #ffffff;
+            height: 320px; /* Reducido de min-height: 400px */
+            position: relative;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .results {
+            background: #f1f5f9;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 10px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .result-label {
+            font-weight: 600;
+        }
+
+        .math-result {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+        }
+
+        .equilibrium-indicator {
+            margin-top: 15px;
+            padding: 12px;
+            text-align: center;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .equilibrium-yes {
+            background: #dcfce7;
+            color: #166534;
+            border: 2px solid #22c55e;
+        }
+
+        .equilibrium-no {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 5px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover, .btn:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            outline: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #64748b, #94a3b8);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .vector-legend {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .instructions, .explanation {
+            background: #fff;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px;
+            border-top: 5px solid var(--primary-color);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .math-formula {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #10b981;
+            overflow-x: auto;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--primary-color);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .advanced-options {
+            margin-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 20px;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-option input {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Nuevos estilos para el modal y botón de ampliar */
+        .canvas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .zoom-btn {
+            background: linear-gradient(45deg, #10b981, #059669);
+            font-size: 0.9em;
+            padding: 8px 12px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+        }
+
+        .modal-content {
+            position: relative;
+            margin: auto;
+            padding: 20px;
+            width: 95%;
+            height: 95%;
+            max-width: 1200px;
+            max-height: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-canvas-container {
+            width: 100%;
+            height: 100%;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #modal-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1001;
+        }
+
+        .close-modal:hover {
+            color: #bbb;
+        }
+
+        .modal-legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: white;
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                position: static;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-menu ul {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .input-group {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .vector-legend {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .canvas-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🔬 Simulador de Sistemas de Fuerzas</h1>
+            <p>Visualización interactiva de vectores fuerza y análisis de equilibrio estático</p>
+        </header>
+
+        <nav class="nav-menu" aria-label="Navegación principal">
+            <ul>
+                <li><a href="#instrucciones">📋 Instrucciones</a></li>
+                <li><a href="#configuracion">⚙️ Configuración</a></li>
+                <li><a href="#visualizacion">📊 Visualización</a></li>
+                <li><a href="#teoria">📚 Teoría</a></li>
+            </ul>
+        </nav>
+
+        <section id="instrucciones" class="instructions">
+            <h2>📋 Instrucciones de Uso</h2>
+            <p>Este simulador permite visualizar sistemas de fuerzas concurrentes y calcular la fuerza resultante y equilibrante.</p>
+            <ul>
+                <li><strong>Activar/desactivar fuerzas:</strong> Usa el interruptor junto a cada fuerza para activarla o desactivarla.</li>
+                <li><strong>Ajustar parámetros:</strong> Modifica la magnitud (en Newtons) y el ángulo (en grados) de cada fuerza activa.</li>
+                <li><strong>Visualización:</strong> Observa en tiempo real cómo cambian los vectores de fuerza, la resultante y la equilibrante.</li>
+                <li><strong>Análisis de equilibrio:</strong> El indicador te mostrará si el sistema está en equilibrio estático.</li>
+                <li><strong>Componentes vectoriales:</strong> Activa "Mostrar componentes" para visualizar las componentes X e Y de cada fuerza.</li>
+                <li><strong>Limpiar:</strong> El botón "Limpiar Todo" restablece los valores a cero.</li>
+                <li><strong>Ampliar gráfico:</strong> Usa el botón "🔍 Ampliar Gráfico" para ver el diagrama en pantalla completa.</li>
+            </ul>
+            <div class="math-formula">
+                $$ \text{Recuerda: } \vec{F}_R = \sum \vec{F}_i \quad \text{y} \quad \vec{F}_E = -\vec{F}_R $$
+            </div>
+        </section>
+
+        <main class="main-content">
+            <aside id="configuracion" class="controls">
+                <h2 class="section-title">⚙️ Configuración de Fuerzas</h2>
+
+                <div class="force-input">
+                    <div class="force-header">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span class="force-color" id="dot-f1" style="background-color:var(--force1-color)"></span>
+                            <strong>Fuerza 1 \(F_1\)</strong>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span>Activar</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="f1_active" checked aria-label="Activar Fuerza 1">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <div class="input-field">
+                            <label for="f1_magnitude">Magnitud \(|F_1|\) (N)</label>
+                            <input type="number" id="f1_magnitude" value="50" step="1" min="0" aria-label="Magnitud de Fuerza 1">
+                        </div>
+                        <div class="input-field">
+                            <label for="f1_angle">Ángulo \(\theta_1\) (°)</label>
+                            <input type="number" id="f1_angle" value="30" step="1" min="0" max="360" aria-label="Ángulo de Fuerza 1">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="force-input">
+                    <div class="force-header">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span class="force-color" id="dot-f2" style="background-color:var(--force2-color)"></span>
+                            <strong>Fuerza 2 \(F_2\)</strong>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span>Activar</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="f2_active" checked aria-label="Activar Fuerza 2">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <div class="input-field">
+                            <label for="f2_magnitude">Magnitud \(|F_2|\) (N)</label>
+                            <input type="number" id="f2_magnitude" value="40" step="1" min="0" aria-label="Magnitud de Fuerza 2">
+                        </div>
+                        <div class="input-field">
+                            <label for="f2_angle">Ángulo \(\theta_2\) (°)</label>
+                            <input type="number" id="f2_angle" value="120" step="1" min="0" max="360" aria-label="Ángulo de Fuerza 2">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="force-input">
+                    <div class="force-header">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span class="force-color" id="dot-f3" style="background-color:var(--force3-color)"></span>
+                            <strong>Fuerza 3 \(F_3\)</strong>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span>Activar</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="f3_active" checked aria-label="Activar Fuerza 3">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <div class="input-field">
+                            <label for="f3_magnitude">Magnitud \(|F_3|\) (N)</label>
+                            <input type="number" id="f3_magnitude" value="60" step="1" min="0" aria-label="Magnitud de Fuerza 3">
+                        </div>
+                        <div class="input-field">
+                            <label for="f3_angle">Ángulo \(\theta_3\) (°)</label>
+                            <input type="number" id="f3_angle" value="225" step="1" min="0" max="360" aria-label="Ángulo de Fuerza 3">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="advanced-options">
+                    <h3 style="margin-bottom: 15px; color: var(--secondary-color);">Opciones de Visualización</h3>
+                    <div class="options-grid">
+                        <div class="checkbox-option">
+                            <input type="checkbox" id="show-components" aria-label="Mostrar componentes de vectores">
+                            <label for="show-components">Mostrar componentes</label>
+                        </div>
+                        <div class="checkbox-option">
+                            <input type="checkbox" id="show-grid" checked aria-label="Mostrar cuadrícula">
+                            <label for="show-grid">Mostrar cuadrícula</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn" id="clear-all">🗑️ Limpiar Todo</button>
+                </div>
+            </aside>
+
+            <section id="visualizacion" class="simulation-area">
+                <div class="canvas-header">
+                    <h2 class="section-title">📊 Visualización y Análisis</h2>
+                    <button class="btn zoom-btn" id="zoom-btn">🔍 Ampliar Gráfico</button>
+                </div>
+
+                <div class="vector-legend">
+                    <div class="legend-item"><span class="legend-color" style="background-color:var(--force1-color)"></span>Fuerza 1 \(F_1\)</div>
+                    <div class="legend-item"><span class="legend-color" style="background-color:var(--force2-color)"></span>Fuerza 2 \(F_2\)</div>
+                    <div class="legend-item"><span class="legend-color" style="background-color:var(--force3-color)"></span>Fuerza 3 \(F_3\)</div>
+                    <div class="legend-item"><span class="legend-color" style="background-color:var(--resultant-color)"></span>Fuerza Resultante \(F_R\)</div>
+                    <div class="legend-item"><span class="legend-color" style="background-color:var(--equilibrant-color)"></span>Fuerza Equilibrante \(F_E\)</div>
+                    <div class="legend-item"><span class="legend-color" style="background-color:var(--component-color)"></span>Componentes X/Y</div>
+                </div>
+
+                <div class="canvas-container">
+                    <canvas id="canvas" aria-label="Canvas de visualización de vectores de fuerza"></canvas>
+                </div>
+
+                <div class="results" aria-live="polite">
+                    <div class="result-item">
+                        <div class="result-label">Fuerza Resultante \(|F_R|\):</div>
+                        <div class="result-value math-result" id="resultant_mag">\(0.00\ \text{N}\)</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Ángulo Resultante \(\theta_R\):</div>
+                        <div class="result-value math-result" id="resultant_angle">\(0.0^\circ\)</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Componentes \((F_{Rx}, F_{Ry})\):</div>
+                        <div class="result-value math-result" id="components">\(0.00, 0.00\)</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Fuerza Equilibrante \(|F_E|\):</div>
+                        <div class="result-value math-result" id="equilibrant_mag">\(0.00\ \text{N}\)</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Ángulo Equilibrante \(\theta_E\):</div>
+                        <div class="result-value math-result" id="equilibrant_angle">\(0.0^\circ\)</div>
+                    </div>
+
+                    <div id="equilibrium" class="equilibrium-indicator"></div>
+                </div>
+            </section>
+        </main>
+
+        <section id="teoria" class="explanation">
+            <h2>📚 Fundamentos Teóricos</h2>
+            <p>Un sistema de fuerzas concurrentes es un conjunto de fuerzas cuyas líneas de acción se cruzan en un único punto. Para analizar el efecto combinado de estas fuerzas, utilizamos el <strong>Principio de Superposición</strong>.</p>
+
+            <div class="math-formula">
+                \[ \vec{F}_R = \sum_{i=1}^{n} \vec{F}_i = \vec{F}_1 + \vec{F}_2 + \vec{F}_3 + \dots \]
+            </div>
+
+            <h3>Descomposición en Componentes</h3>
+            <div class="math-formula">
+                \[ F_x = |\vec{F}| \cos(\theta) \quad \text{y} \quad F_y = |\vec{F}| \sin(\theta) \]
+            </div>
+
+            <h3>Cálculo de la Fuerza Resultante</h3>
+            <div class="math-formula">
+                \[ F_{Rx} = \sum F_{ix}, \quad F_{Ry} = \sum F_{iy} \]
+            </div>
+            <div class="math-formula">
+                \[ |\vec{F}_R| = \sqrt{F_{Rx}^2 + F_{Ry}^2}, \quad \theta_R = \operatorname{atan2}(F_{Ry},F_{Rx}) \]
+            </div>
+
+            <h3>Condición de Equilibrio</h3>
+            <div class="math-formula">
+                \[ \vec{F}_R = 0 \iff \sum F_x = 0 \ \text{y}\ \sum F_y = 0 \]
+            </div>
+            
+            <h3>Fuerza Equilibrante</h3>
+            <p>La fuerza equilibrante es una fuerza que, aplicada al mismo punto que las demás, produce el equilibrio del sistema. Tiene la misma magnitud que la resultante pero dirección opuesta:</p>
+            <div class="math-formula">
+                \[ \vec{F}_E = -\vec{F}_R \]
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal para gráfico ampliado -->
+    <div id="modal-grafico" class="modal">
+        <span class="close-modal">&times;</span>
+        <div class="modal-content">
+            <div class="modal-canvas-container">
+                <canvas id="modal-canvas"></canvas>
+            </div>
+            <div class="modal-legend">
+                <div class="legend-item"><span class="legend-color" style="background-color:var(--force1-color)"></span>Fuerza 1 \(F_1\)</div>
+                <div class="legend-item"><span class="legend-color" style="background-color:var(--force2-color)"></span>Fuerza 2 \(F_2\)</div>
+                <div class="legend-item"><span class="legend-color" style="background-color:var(--force3-color)"></span>Fuerza 3 \(F_3\)</div>
+                <div class="legend-item"><span class="legend-color" style="background-color:var(--resultant-color)"></span>Fuerza Resultante \(F_R\)</div>
+                <div class="legend-item"><span class="legend-color" style="background-color:var(--equilibrant-color)"></span>Fuerza Equilibrante \(F_E\)</div>
+                <div class="legend-item"><span class="legend-color" style="background-color:var(--component-color)"></span>Componentes X/Y</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ForceSimulator {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.modalCanvas = document.getElementById('modal-canvas');
+                this.modalCtx = this.modalCanvas.getContext('2d');
+                this.origin = { x: 0, y: 0 };
+                this.scale = 1;
+                this.equilibriumTolerance = 0.1;
+
+                // Inicializar forcesConfig basándonos en los valores reales del DOM
+                const c1 = (getComputedStyle(document.documentElement).getPropertyValue('--force1-color') || '#ef4444').trim();
+                const c2 = (getComputedStyle(document.documentElement).getPropertyValue('--force2-color') || '#10b981').trim();
+                const c3 = (getComputedStyle(document.documentElement).getPropertyValue('--force3-color') || '#3b82f6').trim();
+
+                this.forcesConfig = [
+                    { id: '1', color: c1, active: !!document.getElementById('f1_active').checked },
+                    { id: '2', color: c2, active: !!document.getElementById('f2_active').checked },
+                    { id: '3', color: c3, active: !!document.getElementById('f3_active').checked },
+                ];
+
+                this.resultantColor = (getComputedStyle(document.documentElement).getPropertyValue('--resultant-color') || '#f59e0b').trim();
+                this.equilibrantColor = (getComputedStyle(document.documentElement).getPropertyValue('--equilibrant-color') || '#8b5cf6').trim();
+                this.componentColor = (getComputedStyle(document.documentElement).getPropertyValue('--component-color') || '#06b6d4').trim();
+
+                // set initial dot colors (UI)
+                document.getElementById('dot-f1').style.backgroundColor = this.forcesConfig[0].color;
+                document.getElementById('dot-f2').style.backgroundColor = this.forcesConfig[1].color;
+                document.getElementById('dot-f3').style.backgroundColor = this.forcesConfig[2].color;
+
+                window.addEventListener('resize', this.resizeCanvas.bind(this));
+                this.addEventListeners();
+
+                // primer ajuste y render
+                this.resizeCanvas();
+            }
+
+            resizeCanvas() {
+                const container = this.canvas.parentElement;
+                // ajustar tamaño físico del canvas
+                const w = Math.max(300, container.clientWidth);
+                const h = Math.max(200, container.clientHeight);
+                this.canvas.width = Math.floor(w);
+                this.canvas.height = Math.floor(h);
+                this.origin = { x: this.canvas.width / 2, y: this.canvas.height / 2 };
+                // actualizar dibujo
+                this.updateSimulation();
+            }
+
+            resizeModalCanvas() {
+                const container = this.modalCanvas.parentElement;
+                this.modalCanvas.width = container.clientWidth;
+                this.modalCanvas.height = container.clientHeight - 50; // Dejar espacio para la leyenda
+            }
+
+            addEventListeners() {
+                // inputs numéricos
+                const inputs = Array.from(document.querySelectorAll('input[type="number"]'));
+                inputs.forEach(input => input.addEventListener('input', () => this.requestUpdate()));
+
+                // toggles (checkboxes)
+                const toggles = Array.from(document.querySelectorAll('input[type="checkbox"]'));
+                toggles.forEach(toggle => {
+                    toggle.addEventListener('change', () => {
+                        const prefix = toggle.id.replace('_active', '');
+                        const forceIndex = parseInt(prefix.replace('f',''), 10) - 1;
+                        if (!isNaN(forceIndex) && this.forcesConfig[forceIndex]) {
+                            this.forcesConfig[forceIndex].active = !!toggle.checked;
+                        }
+                        // habilitar/deshabilitar inputs asociados
+                        const magnitudeInput = document.getElementById(`${prefix}_magnitude`);
+                        const angleInput = document.getElementById(`${prefix}_angle`);
+                        if (magnitudeInput) magnitudeInput.disabled = !toggle.checked;
+                        if (angleInput) angleInput.disabled = !toggle.checked;
+                        this.requestUpdate();
+                    });
+
+                    // inicialmente reflejar el estado (por si el HTML no coincide)
+                    const prefixInit = toggle.id.replace('_active','');
+                    const magnitudeInputInit = document.getElementById(`${prefixInit}_magnitude`);
+                    const angleInputInit = document.getElementById(`${prefixInit}_angle`);
+                    if (magnitudeInputInit) magnitudeInputInit.disabled = !toggle.checked;
+                    if (angleInputInit) angleInputInit.disabled = !toggle.checked;
+                });
+
+                // opciones avanzadas
+                document.getElementById('show-components').addEventListener('change', () => this.requestUpdate());
+                document.getElementById('show-grid').addEventListener('change', () => this.requestUpdate());
+
+                // botones
+                document.getElementById('clear-all').addEventListener('click', () => this.clearAll());
+                
+                // Modal
+                document.getElementById('zoom-btn').addEventListener('click', () => this.openModal());
+                document.querySelector('.close-modal').addEventListener('click', () => this.closeModal());
+                document.getElementById('modal-grafico').addEventListener('click', (e) => {
+                    if (e.target.id === 'modal-grafico') this.closeModal();
+                });
+                
+                // Redimensionar modal cuando cambie el tamaño de la ventana
+                window.addEventListener('resize', () => {
+                    if (document.getElementById('modal-grafico').style.display === 'block') {
+                        this.resizeModalCanvas();
+                        this.drawModal();
+                    }
+                });
+            }
+
+            openModal() {
+                document.getElementById('modal-grafico').style.display = 'block';
+                this.resizeModalCanvas();
+                this.drawModal();
+            }
+
+            closeModal() {
+                document.getElementById('modal-grafico').style.display = 'none';
+            }
+
+            requestUpdate() {
+                // evitar múltiples repintados excesivos; usar requestAnimationFrame
+                if (this._raf) cancelAnimationFrame(this._raf);
+                this._raf = requestAnimationFrame(() => this.updateSimulation());
+            }
+
+            getForceData() {
+                return this.forcesConfig.map((config, idx) => {
+                    const prefix = `f${config.id}`;
+                    const magEl = document.getElementById(`${prefix}_magnitude`);
+                    const angEl = document.getElementById(`${prefix}_angle`);
+                    const magnitude = magEl ? (parseFloat(magEl.value) || 0) : 0;
+                    const angle = angEl ? (parseFloat(angEl.value) || 0) : 0;
+                    const labelIndex = parseInt(config.id, 10) - 1;
+                    const subScripts = ['₁','₂','₃'];
+                    return {
+                        active: !!config.active,
+                        magnitude,
+                        angle,
+                        color: config.color,
+                        label: `F${subScripts[labelIndex] || config.id}`
+                    };
+                });
+            }
+
+            calculateComponents(magnitude, angleDeg) {
+                const rad = angleDeg * Math.PI / 180;
+                return { x: magnitude * Math.cos(rad), y: magnitude * Math.sin(rad) };
+            }
+
+            calculateResultant(forces) {
+                let totalX = 0, totalY = 0;
+                forces.forEach(f => {
+                    if (f.active && f.magnitude > 0) {
+                        const c = this.calculateComponents(f.magnitude, f.angle);
+                        totalX += c.x;
+                        totalY += c.y;
+                    }
+                });
+                const magnitude = Math.sqrt(totalX*totalX + totalY*totalY);
+                let angle = 0;
+                if (magnitude > 1e-9) {
+                    angle = Math.atan2(totalY, totalX) * 180 / Math.PI;
+                    if (angle < 0) angle += 360;
+                }
+                return { magnitude, angle, components: { x: totalX, y: totalY } };
+            }
+
+            calculateEquilibrant(resultant) {
+                if (resultant.magnitude < 1e-9) return { magnitude:0, angle:0 };
+                let eqAngle = resultant.angle + 180;
+                if (eqAngle >= 360) eqAngle -= 360;
+                return { magnitude: resultant.magnitude, angle: eqAngle };
+            }
+
+            updateScale(forces, resultant, equilibrant, canvasWidth, canvasHeight) {
+                const active = forces.filter(f => f.active && f.magnitude > 0);
+                const all = active.map(f=>f.magnitude).concat([resultant.magnitude, equilibrant.magnitude]);
+                const maxMag = Math.max(...all, 1);
+                const canvasMax = Math.min(canvasWidth, canvasHeight);
+                const scale = (canvasMax * 0.4) / maxMag;
+                return scale < 0.5 ? (canvasMax * 0.4) / (maxMag + 20) : scale;
+            }
+
+            clearCanvas(ctx, width, height, showGrid, origin) {
+                ctx.clearRect(0,0,width,height);
+                
+                // Dibujar cuadrícula si está activada
+                if (showGrid) {
+                    this.drawGrid(ctx, width, height, origin);
+                }
+                
+                // ejes
+                ctx.save();
+                ctx.strokeStyle = '#aaa';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(0, origin.y); 
+                ctx.lineTo(width, origin.y);
+                ctx.moveTo(origin.x, 0); 
+                ctx.lineTo(origin.x, height);
+                ctx.stroke();
+                
+                ctx.fillStyle = '#666';
+                ctx.font = '13px Arial';
+                ctx.fillText('X', width - 20, origin.y - 8);
+                ctx.fillText('Y', origin.x + 8, 18);
+                ctx.restore();
+            }
+            
+            drawGrid(ctx, width, height, origin) {
+                const gridSize = 40;
+                ctx.save();
+                ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid-color') || 'rgba(0,0,0,0.05)';
+                ctx.lineWidth = 0.5;
+                
+                // Líneas verticales
+                for (let x = origin.x % gridSize; x < width; x += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                    ctx.stroke();
+                }
+                
+                // Líneas horizontales
+                for (let y = origin.y % gridSize; y < height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                    ctx.stroke();
+                }
+                
+                ctx.restore();
+            }
+
+            drawVector(ctx, origin, scale, vector) {
+                if (!vector || vector.magnitude <= 0) return;
+                const comp = this.calculateComponents(vector.magnitude, vector.angle);
+                const start = origin;
+                const end = { x: start.x + comp.x * scale, y: start.y - comp.y * scale };
+
+                // linea
+                ctx.strokeStyle = vector.color || '#000';
+                ctx.lineWidth = 3.5;
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.stroke();
+
+                // punta
+                this.drawArrowHead(ctx, start, end, vector.color || '#000');
+
+                // etiqueta
+                this.drawVectorLabel(ctx, end, vector);
+            }
+            
+            drawVectorComponents(ctx, origin, scale, vector) {
+                if (!vector || vector.magnitude <= 0) return;
+                const comp = this.calculateComponents(vector.magnitude, vector.angle);
+                const start = origin;
+                const endX = { x: start.x + comp.x * scale, y: start.y };
+                const endY = { x: start.x, y: start.y - comp.y * scale };
+                
+                // Componente X
+                ctx.save();
+                ctx.strokeStyle = this.componentColor;
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 3]);
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(endX.x, endX.y);
+                ctx.stroke();
+                
+                // Componente Y
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(endY.x, endY.y);
+                ctx.stroke();
+                ctx.restore();
+                
+                // Etiquetas de componentes
+                if (comp.x !== 0) {
+                    ctx.fillStyle = this.componentColor;
+                    ctx.font = '11px Arial';
+                    ctx.fillText(`F${vector.label.substring(1)}x = ${comp.x.toFixed(1)} N`, 
+                                     (start.x + endX.x)/2, start.y + 15);
+                }
+                
+                if (comp.y !== 0) {
+                    ctx.fillStyle = this.componentColor;
+                    ctx.font = '11px Arial';
+                    ctx.fillText(`F${vector.label.substring(1)}y = ${comp.y.toFixed(1)} N`, 
+                                     start.x - 50, (start.y + endY.y)/2);
+                }
+            }
+
+            drawArrowHead(ctx, start, end, color) {
+                const headLength = 12;
+                const headAngle = Math.PI / 6;
+                const angle = Math.atan2(end.y - start.y, end.x - start.x);
+                ctx.fillStyle = color || '#000';
+                ctx.beginPath();
+                ctx.moveTo(end.x, end.y);
+                ctx.lineTo(end.x - headLength * Math.cos(angle - headAngle), end.y - headLength * Math.sin(angle - headAngle));
+                ctx.lineTo(end.x - headLength * Math.cos(angle + headAngle), end.y - headLength * Math.sin(angle + headAngle));
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            drawVectorLabel(ctx, pos, vector) {
+                ctx.font = 'bold 13px Arial';
+                const text = `${vector.label}: ${vector.magnitude.toFixed(1)} N`;
+                const metrics = ctx.measureText(text);
+                const textWidth = metrics.width;
+                const textHeight = 14;
+                let labelX = pos.x + 12;
+                let labelY = pos.y - 6;
+
+                // evitar fuera de canvas
+                if (labelX + textWidth + 8 > ctx.canvas.width) labelX = pos.x - textWidth - 18;
+                if (labelY - textHeight < 0) labelY = pos.y + textHeight + 6;
+
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.fillRect(labelX - 5, labelY - textHeight, textWidth + 10, textHeight + 6);
+                ctx.fillStyle = vector.color || '#000';
+                ctx.fillText(text, labelX, labelY);
+            }
+
+            updateDisplay(resultant, equilibrant) {
+                const fmt = (n, d=2)=> Number(n).toFixed(d);
+                const rm = document.getElementById('resultant_mag');
+                const ra = document.getElementById('resultant_angle');
+                const compEl = document.getElementById('components');
+                const em = document.getElementById('equilibrant_mag');
+                const ea = document.getElementById('equilibrant_angle');
+
+                if (rm) rm.innerHTML = `\\(${fmt(resultant.magnitude,2)}\\ \\text{N}\\)`;
+                if (ra) ra.innerHTML = `\\(${fmt(resultant.angle,1)}^\\circ\\)`;
+                if (compEl) compEl.innerHTML = `\\((${fmt(resultant.components.x,2)}\\ \\text{N},\\ ${fmt(resultant.components.y,2)}\\ \\text{N})\\)`;
+                if (em) em.innerHTML = `\\(${fmt(equilibrant.magnitude,2)}\\ \\text{N}\\)`;
+                if (ea) ea.innerHTML = `\\(${fmt(equilibrant.angle,1)}^\\circ\\)`;
+
+                // reprocesar MathJax
+                if (window.MathJax) {
+                    try {
+                        if (MathJax.typesetPromise) {
+                            MathJax.typesetPromise();
+                        } else if (MathJax.typeset) {
+                            MathJax.typeset();
+                        }
+                    } catch (err) {
+                        console.warn('MathJax typeset error:', err);
+                    }
+                }
+
+                const equilibriumEl = document.getElementById('equilibrium');
+                const isEq = resultant.magnitude < this.equilibriumTolerance;
+                if (equilibriumEl) {
+                    if (isEq) {
+                        equilibriumEl.textContent = '✅ Sistema en Equilibrio (ΣF = 0)';
+                        equilibriumEl.className = 'equilibrium-indicator equilibrium-yes';
+                    } else {
+                        equilibriumEl.textContent = `❌ Sistema NO está en Equilibrio (|F_R| = ${resultant.magnitude.toFixed(2)} N)`;
+                        equilibriumEl.className = 'equilibrium-indicator equilibrium-no';
+                    }
+                }
+            }
+
+            drawSimulation(ctx, width, height, forces, resultant, equilibrant) {
+                const origin = { x: width / 2, y: height / 2 };
+                const showComponents = document.getElementById('show-components').checked;
+                const showGrid = document.getElementById('show-grid').checked;
+                const scale = this.updateScale(forces, resultant, equilibrant, width, height);
+                
+                this.clearCanvas(ctx, width, height, showGrid, origin);
+
+                // dibujar fuerzas
+                forces.forEach(f => { 
+                    if (f.active && f.magnitude > 0) {
+                        this.drawVector(ctx, origin, scale, f);
+                        if (showComponents) this.drawVectorComponents(ctx, origin, scale, f);
+                    }
+                });
+
+                // resultante
+                if (resultant.magnitude > 1e-6) {
+                    this.drawVector(ctx, origin, scale, { 
+                        magnitude: resultant.magnitude, 
+                        angle: resultant.angle, 
+                        color: this.resultantColor, 
+                        label: 'F_R' 
+                    });
+                }
+
+                // equilibrante si aplica (dibujar cuando resultante no nula)
+                if (resultant.magnitude > this.equilibriumTolerance && equilibrant.magnitude > 1e-6) {
+                    this.drawVector(ctx, origin, scale, { 
+                        magnitude: equilibrant.magnitude, 
+                        angle: equilibrant.angle, 
+                        color: this.equilibrantColor, 
+                        label: 'F_E' 
+                    });
+                }
+            }
+
+            updateSimulation() {
+                if (!this.ctx) return;
+                const forces = this.getForceData();
+                const resultant = this.calculateResultant(forces);
+                const equilibrant = this.calculateEquilibrant(resultant);
+
+                this.drawSimulation(this.ctx, this.canvas.width, this.canvas.height, forces, resultant, equilibrant);
+                
+                // actualizar display y math
+                this.updateDisplay(resultant, equilibrant);
+            }
+            
+            drawModal() {
+                const forces = this.getForceData();
+                const resultant = this.calculateResultant(forces);
+                const equilibrant = this.calculateEquilibrant(resultant);
+                
+                this.drawSimulation(this.modalCtx, this.modalCanvas.width, this.modalCanvas.height, forces, resultant, equilibrant);
+            }
+
+            clearAll() {
+                this.forcesConfig.forEach(config => {
+                    const prefix = `f${config.id}`;
+                    const mag = document.getElementById(`${prefix}_magnitude`);
+                    const ang = document.getElementById(`${prefix}_angle`);
+                    const act = document.getElementById(`${prefix}_active`);
+                    if (mag) mag.value = '0';
+                    if (ang) ang.value = '0';
+                    if (act) act.checked = true;
+                    config.active = true;
+                    if (mag) mag.disabled = false;
+                    if (ang) ang.disabled = false;
+                });
+                this.requestUpdate();
+            }
+        }
+
+        // arrancar cuando DOM listo
+        document.addEventListener('DOMContentLoaded', () => {
+            window.simulator = new ForceSimulator();
+        });
+    </script>
+</body>
+</html>
