@@ -1,1456 +1,519 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Simulador de Sistemas de Fuerzas</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor de Unidades</title>
     
     <!-- MathJax Configuration -->
     <script>
         window.MathJax = {
             tex: {
                 inlineMath: [['\\(', '\\)']],
-                displayMath: [['\\[', '\\]'], ['$$', '$$']]
+                displayMath: [['\\[', '\\]']]
             },
-            svg: { fontCache: 'global' }
+            svg: {
+                fontCache: 'global'
+            }
         };
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js" id="MathJax-script" async></script>
-
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
     <style>
         :root {
-            --primary-color: #2563eb;
-            --secondary-color: #1e40af;
-            --background-gradient-start: #f0f9ff;
-            --background-gradient-end: #e0f2fe;
-            --container-bg: rgba(255, 255, 255, 0.98);
-            --text-color: #1e293b;
-            --header-gradient-start: #2563eb;
-            --header-gradient-end: #3b82f6;
-            --force1-color: #ef4444;
-            --force2-color: #10b981;
-            --force3-color: #3b82f6;
-            --resultant-color: #f59e0b;
-            --equilibrant-color: #8b5cf6;
-            --component-color: #06b6d4;
-            --grid-color: rgba(0, 0, 0, 0.05);
+            --primary-color: #2c3e50; --secondary-color: #3498db; --accent-color: #e74c3c;
+            --light-color: #ecf0f1; --dark-color: #2c3e50; --success-color: #2ecc71;
+            --font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
         }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: linear-gradient(135deg, var(--background-gradient-start) 0%, var(--background-gradient-end) 100%);
-            color: var(--text-color);
-            padding: 20px;
-            min-height: 100vh;
-            line-height: 1.6;
+            background-color: #f5f7fa; color: var(--dark-color);
+            line-height: 1.6; font-family: var(--font-family); padding: 20px;
         }
-
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: var(--container-bg);
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            /* Optimización: usar will-change con precaución */
-            contain: layout style paint;
+            max-width: 1200px; margin: 20px auto; background-color: white;
+            border-radius: 12px; box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1); overflow: hidden;
         }
-
-        .header {
-            background: linear-gradient(45deg, var(--header-gradient-start), var(--header-gradient-end));
-            color: white;
-            text-align: center;
-            padding: 30px;
-            position: relative;
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white; padding: 40px 25px; text-align: center;
         }
-
-        .header h1 {
-            font-size: 2.3em;
-            margin-bottom: 8px;
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .notation-note { font-size: 0.9rem; background-color: rgba(0,0,0,0.2); padding: 8px; border-radius: 5px; display: inline-block; }
+        .converter { padding: 30px; }
+        
+        .selectors-group {
+            display: flex; flex-wrap: wrap; gap: 20px;
+            align-items: flex-end; margin-bottom: 10px;
         }
-
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
+        .input-field { flex: 1; min-width: 180px; }
+        .unit-swap-container { display: flex; align-items: flex-end; gap: 10px; flex: 2; min-width: 380px; }
+        .value-field { flex: 1.5; min-width: 200px; }
+        
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--primary-color); font-size: 0.95rem; }
+        select, input[type="text"] {
+            width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 1.1rem;
+            transition: border-color 0.3s, box-shadow 0.3s; background-color: #fff; appearance: none;
         }
-
-        .nav-menu {
-            background: rgba(0, 0, 0, 0.05);
-            padding: 15px 30px;
-            border-bottom: 1px solid #e2e8f0;
+        select {
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat; background-position: right 15px center; background-size: 1em; padding-right: 40px; cursor: pointer;
         }
-
-        .nav-menu ul {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            list-style: none;
-            flex-wrap: wrap;
+        select:focus, input:focus {
+            outline: none; border-color: var(--secondary-color); box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.2);
         }
-
-        .nav-menu a {
-            color: var(--secondary-color);
-            text-decoration: none;
-            font-weight: 600;
-            padding: 8px 15px;
-            border-radius: 5px;
-            transition: background-color 0.2s ease-out;
-            /* Optimización: mejor interacción táctil */
-            touch-action: manipulation;
+        #swapBtn {
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem; line-height: 1; background-color: var(--light-color);
+            border: 2px solid #ddd; border-radius: 50%; cursor: pointer; transition: background-color 0.3s, transform 0.3s;
+            flex-shrink: 0; width: 50px; height: 50px;
         }
-
-        .nav-menu a:hover,
-        .nav-menu a:focus {
-            background-color: rgba(37, 99, 235, 0.1);
-            outline: none;
+        #swapBtn:hover { background-color: #e0e0e0; transform: rotate(180deg); }
+        
+        .hint-container {
+            text-align: right; padding-right: 5px; margin-bottom: 30px;
         }
+        .input-hint { font-size: 0.85rem; color: #666; }
 
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 30px;
-            padding: 30px;
+        .convert-button-container { text-align: center; margin-bottom: 30px; }
+        button#convertBtn {
+            background-color: var(--secondary-color); color: white; border: none; padding: 14px 45px; border-radius: 8px; cursor: pointer;
+            font-size: 1.25rem; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-
-        .controls {
-            background: #f8fafc;
-            border-radius: 15px;
-            padding: 25px;
-            border: 1px solid #e2e8f0;
-            height: fit-content;
-            position: sticky;
-            top: 20px;
-        }
-
-        .section-title {
-            color: var(--secondary-color);
-            font-size: 1.5em;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 3px solid var(--primary-color);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .section-title::before {
-            content: "";
-            display: inline-block;
-            width: 8px;
-            height: 24px;
-            background: var(--primary-color);
-            border-radius: 4px;
-        }
-
-        .force-input {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #e2e8f0;
-            transition: transform 0.2s ease-out;
-            /* Optimización: evitar repaint en hover */
-            will-change: transform;
-        }
-
-        .force-input:focus-within {
-            transform: translateY(-2px);
-            /* Optimización: sombra más eficiente */
-            filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.05));
-        }
-
-        .force-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .force-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: inline-block;
-            border: 2px solid rgba(0, 0, 0, 0.1);
-        }
-
-        .input-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .input-field {
-            position: relative;
-        }
-
-        .input-field label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 0.9em;
-            color: #4a5568;
-            font-weight: 500;
-        }
-
-        .input-field input {
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 2px solid #cbd5e0;
-            font-size: 1em;
-            transition: border-color 0.2s ease-out;
-            /* Optimización: evitar reflow en focus */
-            outline: none;
-        }
-
-        .input-field input:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .canvas-container {
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            background: #ffffff;
-            height: 320px;
-            position: relative;
-            margin-bottom: 20px;
-            overflow: hidden;
-            /* Optimización: hardware acceleration para canvas */
-            transform: translateZ(0);
-            will-change: contents;
-        }
-
-        #canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            /* Optimización: mejorar rendering de canvas */
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: crisp-edges;
-        }
-
-        .results {
-            background: #f1f5f9;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 10px;
-        }
-
-        .result-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .result-label {
-            font-weight: 600;
-        }
-
-        .math-result {
-            font-family: 'Times New Roman', serif;
-            font-style: italic;
-        }
-
-        .equilibrium-indicator {
-            margin-top: 15px;
-            padding: 12px;
-            text-align: center;
-            border-radius: 8px;
-            font-weight: bold;
-        }
-
-        .equilibrium-yes {
-            background: #dcfce7;
-            color: #166534;
-            border: 2px solid #22c55e;
-        }
-
-        .equilibrium-no {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 2px solid #ef4444;
-        }
-
-        .btn {
-            background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
-            color: white;
-            border: none;
-            padding: 12px 18px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            margin: 5px;
-            transition: transform 0.2s ease-out;
-            /* Optimización: hardware acceleration */
-            will-change: transform;
-            /* Evitar seleccion de texto en botones */
-            user-select: none;
-            -webkit-user-select: none;
-        }
-
-        .btn:hover, .btn:focus {
-            transform: translateY(-2px);
-            filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.15));
-            outline: none;
+        button#convertBtn:hover { background-color: #2980b9; transform: translateY(-3px); box-shadow: 0 6px 12px rgba(52, 152, 219, 0.3); }
+        .result-container { margin-top: 20px; padding: 25px; background-color: #f8f9fa; border-radius: 8px; display: none; }
+        
+        /* --- ÚNICO CAMBIO: Color del resultado a negro/oscuro para mejor legibilidad --- */
+        .result-value {
+            font-size: 1.25rem; font-weight: 700;
+            color: var(--primary-color); /* Cambiado de --success-color a --primary-color */
+            text-align: center; margin-bottom: 25px; word-wrap: break-word;
         }
         
-        .btn:active {
-            transform: translateY(0);
+        .toggle-steps-container { text-align: center; margin-bottom: 20px; }
+        .secondary-button {
+            background-color: transparent; color: var(--primary-color); border: 2px solid #ddd;
+            padding: 10px 25px; border-radius: 8px; cursor: pointer; font-size: 1rem;
+            font-weight: 600; transition: all 0.3s ease;
         }
-
-        .btn-secondary {
-            background: linear-gradient(45deg, #64748b, #94a3b8);
+        .secondary-button:hover { background-color: #f0f0f0; border-color: #ccc; }
+        
+        .steps { display: none; margin-top: 25px; background-color: white; padding: 20px; border-radius: 8px; border-left: 5px solid var(--secondary-color); }
+        .steps h4 { margin-bottom: 15px; font-size: 1.2rem; color: var(--primary-color); }
+        .step { margin-bottom: 15px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; display: flex; align-items: center; font-size: 1.05rem; }
+        .step:last-child { margin-bottom: 0; }
+        .step-number {
+            display: inline-flex; align-items: center; justify-content: center; background-color: var(--secondary-color); color: white;
+            min-width: 28px; height: 28px; border-radius: 50%; margin-right: 12px; font-weight: bold; flex-shrink: 0;
         }
-
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-            justify-content: space-between;
+        .error-message {
+            display: flex; align-items: center; background-color: #f8d7da; color: #721c24; padding: 15px;
+            border-radius: 8px; margin-top: 20px; border-left: 5px solid var(--accent-color); font-weight: 500;
         }
-
-        .vector-legend {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            background: #f8fafc;
-            padding: 15px;
-            border-radius: 8px;
+        .history-section { margin-top: 40px; padding: 25px; background-color: #f8f9fa; border-radius: 8px; display: none; }
+        .history-section h3 { margin-bottom: 15px; }
+        .history-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; font-size: 0.95rem; }
+        .history-item-date { color: #777; font-size: 0.85rem; }
+        .clear-history {
+            background-color: var(--accent-color); color: white; border: none; padding: 8px 15px; border-radius: 5px;
+            cursor: pointer; margin-top: 15px; font-size: 0.9rem; float: right; transition: background-color 0.2s;
         }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .clear-history:hover { background-color: #c0392b; }
+        .theory-section { margin-top: 40px; padding: 25px; background-color: #f0f7ff; border-radius: 8px; }
+        .theory-section h2 { margin-bottom: 20px; text-align: center; }
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #ddd; flex-wrap: wrap; gap: 5px; }
+        .tab {
+            padding: 10px 18px; cursor: pointer; background-color: transparent; border: none; border-bottom: 3px solid transparent;
+            font-weight: 600; color: #555; transition: all 0.3s;
         }
-
-        .legend-color {
-            width: 15px;
-            height: 15px;
-            border-radius: 3px;
-            display: inline-block;
+        .tab.active { color: var(--secondary-color); border-bottom-color: var(--secondary-color); }
+        .theory-content { display: none; }
+        .theory-content.active { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .theory-item { margin-bottom: 20px; padding: 20px; background-color: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .formula { text-align: center; margin: 10px 0; font-size: 1.1rem; }
+        footer { text-align: center; padding: 25px; background-color: var(--light-color); color: var(--dark-color); font-size: 0.9rem; margin-top: 20px; }
+        footer a { color: var(--secondary-color); text-decoration: none; font-weight: 600; }
+        footer a:hover { text-decoration: underline; }
+        
+        @media (max-width: 992px) {
+            .selectors-group { flex-direction: column; align-items: stretch; gap: 15px; }
+            .unit-swap-container { flex-direction: row; }
+            .hint-container { text-align: center; margin-top: -15px; }
         }
-
-        .instructions, .explanation {
-            background: #fff;
-            border-radius: 15px;
-            padding: 30px;
-            margin: 30px;
-            border-top: 5px solid var(--primary-color);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-            /* Optimización: contenido estático */
-            contain: content;
-        }
-
-        .math-formula {
-            background: #f7fafc;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #10b981;
-            overflow-x: auto;
-        }
-
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 50px;
-            height: 24px;
-        }
-
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 24px;
-        }
-
-        .toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 16px;
-            width: 16px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-        input:checked + .toggle-slider {
-            background-color: var(--primary-color);
-        }
-
-        input:checked + .toggle-slider:before {
-            transform: translateX(26px);
-        }
-
-        .advanced-options {
-            margin-top: 20px;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 20px;
-        }
-
-        .options-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .checkbox-option {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .checkbox-option input {
-            width: 18px;
-            height: 18px;
-        }
-
-        /* Nuevos estilos para el modal y botón de ampliar */
-        .canvas-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .zoom-btn {
-            background: linear-gradient(45deg, #10b981, #059669);
-            font-size: 0.9em;
-            padding: 8px 12px;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
-            /* Optimización: backdrop-filter para mejor efecto */
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-        }
-
-        .modal-content {
-            position: relative;
-            margin: auto;
-            padding: 20px;
-            width: 95%;
-            height: 95%;
-            max-width: 1200px;
-            max-height: 800px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-canvas-container {
-            width: 100%;
-            height: 100%;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        #modal-canvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        .close-modal {
-            position: absolute;
-            top: 15px;
-            right: 35px;
-            color: #f1f1f1;
-            font-size: 40px;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 1001;
-        }
-
-        .close-modal:hover {
-            color: #bbb;
-        }
-
-        .modal-legend {
-            display: flex;
-            gap: 20px;
-            margin-top: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 10px 15px;
-            border-radius: 8px;
-            color: white;
-        }
-
-        @media (max-width: 1200px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-            
-            .controls {
-                position: static;
-            }
-        }
-
         @media (max-width: 768px) {
-            .nav-menu ul {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .input-group {
-                grid-template-columns: 1fr;
-            }
-            
-            .action-buttons {
-                flex-direction: column;
-            }
-            
-            .options-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .vector-legend {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            .canvas-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
+            body { padding: 10px; } .container { margin: 10px auto; } h1 { font-size: 2rem; }
+            .converter, .history-section, .theory-section { padding: 20px; }
+            .unit-swap-container { flex-direction: column; align-items: stretch; gap: 15px; }
+            .unit-swap-container { min-width: 100%; } #swapBtn { transform: rotate(90deg); margin: 0 auto; }
+            #swapBtn:hover { transform: rotate(270deg); }
+        }
+        @media (max-width: 480px) {
+            h1 { font-size: 1.8rem; } button#convertBtn { width: 100%; }
+            .result-value { font-size: 1.1rem; } .tab { padding: 8px 10px; font-size: 0.9rem; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header class="header">
-            <h1>🔬 Simulador de Sistemas de Fuerzas</h1>
-            <p>Visualización interactiva de vectores fuerza y análisis de equilibrio estático</p>
+        <header>
+            <h1>Conversor de Unidades</h1>
+            <div class="notation-note">Nota: Usamos notación anglosajona (punto decimal) para los cálculos.</div>
         </header>
-
-        <nav class="nav-menu" aria-label="Navegación principal">
-            <ul>
-                <li><a href="#instrucciones">📋 Instrucciones</a></li>
-                <li><a href="#configuracion">⚙️ Configuración</a></li>
-                <li><a href="#visualizacion">📊 Visualización</a></li>
-                <li><a href="#teoria">📚 Teoría</a></li>
-            </ul>
-        </nav>
-
-        <section id="instrucciones" class="instructions">
-            <h2>📋 Instrucciones de Uso</h2>
-            <p>Este simulador permite visualizar sistemas de fuerzas concurrentes y calcular la fuerza resultante y equilibrante.</p>
-            <ul>
-                <li><strong>Activar/desactivar fuerzas:</strong> Usa el interruptor junto a cada fuerza para activarla o desactivarla.</li>
-                <li><strong>Ajustar parámetros:</strong> Modifica la magnitud (en Newtons) y el ángulo (en grados) de cada fuerza activa.</li>
-                <li><strong>Visualización:</strong> Observa en tiempo real cómo cambian los vectores de fuerza, la resultante y la equilibrante.</li>
-                <li><strong>Análisis de equilibrio:</strong> El indicador te mostrará si el sistema está en equilibrio estático.</li>
-                <li><strong>Componentes vectoriales:</strong> Activa "Mostrar componentes" para visualizar las componentes X e Y de cada fuerza.</li>
-                <li><strong>Limpiar:</strong> El botón "Limpiar Todo" restablece los valores a cero.</li>
-                <li><strong>Ampliar gráfico:</strong> Usa el botón "🔍 Ampliar Gráfico" para ver el diagrama en pantalla completa.</li>
-            </ul>
-            <div class="math-formula">
-                $$ \text{Recuerda: } \vec{F}_R = \sum \vec{F}_i \quad \text{y} \quad \vec{F}_E = -\vec{F}_R $$
-            </div>
-        </section>
-
-        <main class="main-content">
-            <aside id="configuracion" class="controls">
-                <h2 class="section-title">⚙️ Configuración de Fuerzas</h2>
-
-                <div class="force-input">
-                    <div class="force-header">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span class="force-color" id="dot-f1" style="background-color:var(--force1-color)"></span>
-                            <strong>Fuerza 1 \(F_1\)</strong>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <span>Activar</span>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="f1_active" checked aria-label="Activar Fuerza 1">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <div class="input-field">
-                            <label for="f1_magnitude">Magnitud \(|F_1|\) (N)</label>
-                            <input type="number" id="f1_magnitude" value="50" step="1" min="0" aria-label="Magnitud de Fuerza 1">
-                        </div>
-                        <div class="input-field">
-                            <label for="f1_angle">Ángulo \(\theta_1\) (°)</label>
-                            <input type="number" id="f1_angle" value="30" step="1" min="0" max="360" aria-label="Ángulo de Fuerza 1">
-                        </div>
-                    </div>
+        
+        <main class="converter">
+            <div class="selectors-group">
+                <div class="input-field">
+                    <label for="category">Categoría de Magnitud</label>
+                    <select id="category">
+                        <option value="longitud">Longitud</option> <option value="area">Área</option> <option value="volumen">Volumen</option>
+                        <option value="masa">Masa</option> <option value="tiempo">Tiempo</option> <option value="velocidad">Velocidad</option>
+                        <option value="aceleracion">Aceleración</option> <option value="fuerza">Fuerza</option> <option value="presion">Presión</option>
+                        <option value="densidad">Densidad</option> <option value="pesoEspecifico">Peso Específico</option> <option value="energia">Energía</option>
+                        <option value="temperatura">Temperatura</option> <option value="potencia">Potencia</option>
+                    </select>
                 </div>
-
-                <div class="force-input">
-                    <div class="force-header">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span class="force-color" id="dot-f2" style="background-color:var(--force2-color)"></span>
-                            <strong>Fuerza 2 \(F_2\)</strong>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <span>Activar</span>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="f2_active" checked aria-label="Activar Fuerza 2">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <div class="input-field">
-                            <label for="f2_magnitude">Magnitud \(|F_2|\) (N)</label>
-                            <input type="number" id="f2_magnitude" value="40" step="1" min="0" aria-label="Magnitud de Fuerza 2">
-                        </div>
-                        <div class="input-field">
-                            <label for="f2_angle">Ángulo \(\theta_2\) (°)</label>
-                            <input type="number" id="f2_angle" value="120" step="1" min="0" max="360" aria-label="Ángulo de Fuerza 2">
-                        </div>
-                    </div>
+                <div class="unit-swap-container">
+                    <div class="input-field"><label for="fromUnit">Unidad de Origen</label><select id="fromUnit"></select></div>
+                    <button id="swapBtn" title="Intercambiar unidades" aria-label="Intercambiar unidades de origen y destino">⇄</button>
+                    <div class="input-field"><label for="toUnit">Unidad de Destino</label><select id="toUnit"></select></div>
                 </div>
-
-                <div class="force-input">
-                    <div class="force-header">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span class="force-color" id="dot-f3" style="background-color:var(--force3-color)"></span>
-                            <strong>Fuerza 3 \(F_3\)</strong>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <span>Activar</span>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="f3_active" checked aria-label="Activar Fuerza 3">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <div class="input-field">
-                            <label for="f3_magnitude">Magnitud \(|F_3|\) (N)</label>
-                            <input type="number" id="f3_magnitude" value="60" step="1" min="0" aria-label="Magnitud de Fuerza 3">
-                        </div>
-                        <div class="input-field">
-                            <label for="f3_angle">Ángulo \(\theta_3\) (°)</label>
-                            <input type="number" id="f3_angle" value="225" step="1" min="0" max="360" aria-label="Ángulo de Fuerza 3">
-                        </div>
-                    </div>
+                <div class="input-field value-field">
+                    <label for="value">Valor a Convertir</label>
+                    <input type="text" id="value" placeholder="1.0" inputmode="decimal">
                 </div>
-
-                <div class="advanced-options">
-                    <h3 style="margin-bottom: 15px; color: var(--secondary-color);">Opciones de Visualización</h3>
-                    <div class="options-grid">
-                        <div class="checkbox-option">
-                            <input type="checkbox" id="show-components" aria-label="Mostrar componentes de vectores">
-                            <label for="show-components">Mostrar componentes</label>
-                        </div>
-                        <div class="checkbox-option">
-                            <input type="checkbox" id="show-grid" checked aria-label="Mostrar cuadrícula">
-                            <label for="show-grid">Mostrar cuadrícula</label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="action-buttons">
-                    <button class="btn" id="clear-all">🗑️ Limpiar Todo</button>
-                </div>
-            </aside>
-
-            <section id="visualizacion" class="simulation-area">
-                <div class="canvas-header">
-                    <h2 class="section-title">📊 Visualización y Análisis</h2>
-                    <button class="btn zoom-btn" id="zoom-btn">🔍 Ampliar Gráfico</button>
-                </div>
-
-                <div class="vector-legend">
-                    <div class="legend-item"><span class="legend-color" style="background-color:var(--force1-color)"></span>Fuerza 1 \(F_1\)</div>
-                    <div class="legend-item"><span class="legend-color" style="background-color:var(--force2-color)"></span>Fuerza 2 \(F_2\)</div>
-                    <div class="legend-item"><span class="legend-color" style="background-color:var(--force3-color)"></span>Fuerza 3 \(F_3\)</div>
-                    <div class="legend-item"><span class="legend-color" style="background-color:var(--resultant-color)"></span>Fuerza Resultante \(F_R\)</div>
-                    <div class="legend-item"><span class="legend-color" style="background-color:var(--equilibrant-color)"></span>Fuerza Equilibrante \(F_E\)</div>
-                    <div class="legend-item"><span class="legend-color" style="background-color:var(--component-color)"></span>Componentes X/Y</div>
-                </div>
-
-                <div class="canvas-container">
-                    <canvas id="canvas" aria-label="Canvas de visualización de vectores de fuerza"></canvas>
-                </div>
-
-                <div class="results" aria-live="polite">
-                    <div class="result-item">
-                        <div class="result-label">Fuerza Resultante \(|F_R|\):</div>
-                        <div class="result-value math-result" id="resultant_mag">\(0.00\ \text{N}\)</div>
-                    </div>
-                    <div class="result-item">
-                        <div class="result-label">Ángulo Resultante \(\theta_R\):</div>
-                        <div class="result-value math-result" id="resultant_angle">\(0.0^\circ\)</div>
-                    </div>
-                    <div class="result-item">
-                        <div class="result-label">Componentes \((F_{Rx}, F_{Ry})\):</div>
-                        <div class="result-value math-result" id="components">\(0.00, 0.00\)</div>
-                    </div>
-                    <div class="result-item">
-                        <div class="result-label">Fuerza Equilibrante \(|F_E|\):</div>
-                        <div class="result-value math-result" id="equilibrant_mag">\(0.00\ \text{N}\)</div>
-                    </div>
-                    <div class="result-item">
-                        <div class="result-label">Ángulo Equilibrante \(\theta_E\):</div>
-                        <div class="result-value math-result" id="equilibrant_angle">\(0.0^\circ\)</div>
-                    </div>
-
-                    <div id="equilibrium" class="equilibrium-indicator"></div>
-                </div>
-            </section>
-        </main>
-
-        <section id="teoria" class="explanation">
-            <h2>📚 Fundamentos Teóricos</h2>
-            <p>Un sistema de fuerzas concurrentes es un conjunto de fuerzas cuyas líneas de acción se cruzan en un único punto. Para analizar el efecto combinado de estas fuerzas, utilizamos el <strong>Principio de Superposición</strong>.</p>
-
-            <div class="math-formula">
-                \[ \vec{F}_R = \sum_{i=1}^{n} \vec{F}_i = \vec{F}_1 + \vec{F}_2 + \vec{F}_3 + \dots \]
-            </div>
-
-            <h3>Descomposición en Componentes</h3>
-            <div class="math-formula">
-                \[ F_x = |\vec{F}| \cos(\theta) \quad \text{y} \quad F_y = |\vec{F}| \sin(\theta) \]
-            </div>
-
-            <h3>Cálculo de la Fuerza Resultante</h3>
-            <div class="math-formula">
-                \[ F_{Rx} = \sum F_{ix}, \quad F_{Ry} = \sum F_{iy} \]
-            </div>
-            <div class="math-formula">
-                \[ |\vec{F}_R| = \sqrt{F_{Rx}^2 + F_{Ry}^2}, \quad \theta_R = \operatorname{atan2}(F_{Ry},F_{Rx}) \]
-            </div>
-
-            <h3>Condición de Equilibrio</h3>
-            <div class="math-formula">
-                \[ \vec{F}_R = 0 \iff \sum F_x = 0 \ \text{y}\ \sum F_y = 0 \]
             </div>
             
-            <h3>Fuerza Equilibrante</h3>
-            <p>La fuerza equilibrante es una fuerza que, aplicada al mismo punto que las demás, produce el equilibrio del sistema. Tiene la misma magnitud que la resultante pero dirección opuesta:</p>
-            <div class="math-formula">
-                \[ \vec{F}_E = -\vec{F}_R \]
+            <div class="hint-container">
+                <div class="input-hint" id="valueHint">Usa punto para decimales. Ej: 1.5e-3</div>
             </div>
-        </section>
-    </div>
+            
+            <div class="convert-button-container"><button id="convertBtn">Convertir</button></div>
+            
+            <div id="error-container"></div>
+            <div id="live-region" aria-live="polite" aria-atomic="true" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;"></div>
+            
+            <div class="result-container" id="resultContainer" role="status">
+                <div class="result-value" id="resultValue"></div>
+                <div class="toggle-steps-container" id="toggleStepsContainer" style="display: none;">
+                    <button id="toggleStepsBtn" class="secondary-button">Mostrar Pasos de la Conversión</button>
+                </div>
+                <div class="steps" id="steps"></div>
+            </div>
 
-    <!-- Modal para gráfico ampliado -->
-    <div id="modal-grafico" class="modal">
-        <span class="close-modal">&times;</span>
-        <div class="modal-content">
-            <div class="modal-canvas-container">
-                <canvas id="modal-canvas"></canvas>
+            <div class="history-section" id="historySection" role="region" aria-labelledby="history-title">
+                <h3 id="history-title">Historial de Conversiones</h3>
+                <div id="historyList"></div>
+                <button class="clear-history" id="clearHistory">Limpiar Historial</button>
             </div>
-            <div class="modal-legend">
-                <div class="legend-item"><span class="legend-color" style="background-color:var(--force1-color)"></span>Fuerza 1 \(F_1\)</div>
-                <div class="legend-item"><span class="legend-color" style="background-color:var(--force2-color)"></span>Fuerza 2 \(F_2\)</div>
-                <div class="legend-item"><span class="legend-color" style="background-color:var(--force3-color)"></span>Fuerza 3 \(F_3\)</div>
-                <div class="legend-item"><span class="legend-color" style="background-color:var(--resultant-color)"></span>Fuerza Resultante \(F_R\)</div>
-                <div class="legend-item"><span class="legend-color" style="background-color:var(--equilibrant-color)"></span>Fuerza Equilibrante \(F_E\)</div>
-                <div class="legend-item"><span class="legend-color" style="background-color:var(--component-color)"></span>Componentes X/Y</div>
+            <div class="theory-section" role="region" aria-labelledby="theory-title">
+                <h2 id="theory-title">Definiciones y Fórmulas Clave</h2>
+                <div class="tabs">
+                    <button class="tab active" data-tab="newton">Newton (Fuerza)</button>
+                    <button class="tab" data-tab="pascal">Pascal (Presión)</button>
+                    <button class="tab" data-tab="joule">Joule (Energía)</button>
+                    <button class="tab" data-tab="densidad">Densidad</button>
+                    <button class="tab" data-tab="volumen-capacidad">Volumen y Capacidad</button>
+                    <button class="tab" data-tab="peso-especifico">Peso Específico</button>
+                </div>
+                <div class="theory-content active" id="newton-content"><div class="theory-item"><h3>Newton (N)</h3><p>El newton es la unidad de fuerza en el SI. Se define como la fuerza necesaria para proporcionar una aceleración de \(1 \, \text{m/s}^2\) a un objeto de \(1 \, \text{kg}\) de masa.</p><div class="formula">\[ F = m \cdot a \quad \rightarrow \quad 1 \, \text{N} = 1 \, \text{kg} \cdot \frac{\text{m}}{\text{s}^2} \]</div><p><strong>Nota:</strong> En la Tierra, la aceleración de la gravedad estándar es \(g = 9.80665 \, \text{m/s}^2\). Por lo tanto, el peso de un objeto de masa \(m\) es:</p><div class="formula">\[ P = m \cdot g \]</div><p>Por ejemplo, un objeto de \(1 \, \text{kg}\) tiene un peso de aproximadamente \(9.807 \, \text{N}\) en la superficie terrestre.</p></div></div>
+                <div class="theory-content" id="pascal-content"><div class="theory-item"><h3>Pascal (Pa)</h3><p>El pascal es la unidad de presión del SI. Representa la presión ejercida por una fuerza de 1 newton aplicada perpendicularmente sobre una superficie de 1 metro cuadrado.</p><div class="formula">\[ P = \frac{F}{A} \quad \rightarrow \quad 1 \, \text{Pa} = \frac{1 \, \text{N}}{1 \, \text{m}^2} \]</div></div></div>
+                <div class="theory-content" id="joule-content"><div class="theory-item"><h3>Joule (J)</h3><p>El joule (julio) es la unidad de energía, trabajo y calor del SI. Se define como el trabajo realizado cuando una fuerza de 1 newton desplaza un objeto 1 metro.</p><div class="formula">\[ W = F \cdot d \quad \rightarrow \quad 1 \, \text{J} = 1 \, \text{N} \cdot \text{m} \]</div></div></div>
+                <div class="theory-content" id="densidad-content"><div class="theory-item"><h3>Densidad (\(\rho\))</h3><p>Es la relación entre la masa de una sustancia y el volumen que ocupa.</p><div class="formula">\[ \rho = \frac{m}{V} \]</div><p>La densidad del agua a 4°C es de aproximadamente \(1000 \, \text{kg/m}^3\) o \(1 \, \text{g/cm}^3\).</p></div></div>
+                <div class="theory-content" id="volumen-capacidad-content"><div class="theory-item"><h3>Volumen y Capacidad</h3><p>El volumen es el espacio tridimensional que ocupa un cuerpo, mientras que la capacidad es el volumen que puede contener un recipiente. Sus equivalencias clave son:</p><ul style="list-style-type: none; padding-left: 0;"><li>\(\quad 1 \, \text{L} = 1 \, \text{dm}^3 = 1,000 \, \text{cm}^3\)</li><li>\(\quad 1 \, \text{mL} = 1 \, \text{cm}^3\)</li><li>\(\quad 1 \, \text{m}^3 = 1,000 \, \text{L}\)</li></ul></div></div>
+                <div class="theory-content" id="peso-especifico-content"><div class="theory-item"><h3>Peso Específico (\(\gamma\))</h3><p>El peso específico es la relación entre el peso de una sustancia y el volumen que ocupa. Se diferencia de la densidad en que considera el peso en lugar de la masa.</p><div class="formula">\[ \gamma = \frac{P}{V} = \rho \cdot g \]</div><p>Donde \(P\) es el peso, \(V\) es el volumen, \(\rho\) es la densidad y \(g\) es la aceleración debida a la gravedad estándar (\(9.80665 \, \text{m/s}^2\)).</p><p>En el SI, el peso específico se mide en \(\text{N/m}^3\).</p></div></div>
             </div>
-        </div>
+        </main>
+        <footer><p>Recurso educativo por Santiago Fiore. Contenido en <a href="https://sites.google.com/view/santiago-fiore/portada" target="_blank" rel="noopener noreferrer">mi sitio web</a>.</p></footer>
     </div>
 
     <script>
-        /**
-         * ForceSimulator - Simulador de Sistemas de Fuerzas Concurrentes
-         * Optimizado para alto rendimiento con las siguientes técnicas:
-         * - Canvas rendering optimizado con { alpha: false }
-         * - Debouncing/throttling de eventos (16ms inputs, 100ms MathJax, 150ms resize)
-         * - Cache de referencias DOM y valores calculados
-         * - Hardware acceleration CSS (will-change, transform, contain)
-         * - Batch DOM updates y selective MathJax typesetting
-         * - Loop optimization (for...of vs forEach, inline calculations)
-         */
-        class ForceSimulator {
-            constructor() {
-                // Constantes de configuración
-                this.EQUILIBRIUM_TOLERANCE = 0.1;
-                this.GRID_SIZE = 40;
-                this.DEBOUNCE_DELAY = 16; // ~60fps
-                this.MIN_MAGNITUDE = 1e-9;
-                this.CANVAS_PADDING_RATIO = 0.4;
-                
-                // Cache de elementos DOM
-                this.canvas = document.getElementById('canvas');
-                this.ctx = this.canvas.getContext('2d', { alpha: false });
-                this.modalCanvas = document.getElementById('modal-canvas');
-                this.modalCtx = this.modalCanvas.getContext('2d', { alpha: false });
-                
-                this.origin = { x: 0, y: 0 };
-                this.scale = 1;
-                this._updateTimeout = null;
-                this._resizeTimeout = null;
-                this._mathJaxTimeout = null;
-                
-                // Cache de componentes calculados
-                this._cachedForces = null;
-                
-                // Cache de referencias DOM de inputs (performance)
-                this.inputRefs = {
-                    f1: {
-                        magnitude: document.getElementById('f1_magnitude'),
-                        angle: document.getElementById('f1_angle')
-                    },
-                    f2: {
-                        magnitude: document.getElementById('f2_magnitude'),
-                        angle: document.getElementById('f2_angle')
-                    },
-                    f3: {
-                        magnitude: document.getElementById('f3_magnitude'),
-                        angle: document.getElementById('f3_angle')
-                    }
-                };
-
-                const c1 = (getComputedStyle(document.documentElement).getPropertyValue('--force1-color') || '#ef4444').trim();
-                const c2 = (getComputedStyle(document.documentElement).getPropertyValue('--force2-color') || '#10b981').trim();
-                const c3 = (getComputedStyle(document.documentElement).getPropertyValue('--force3-color') || '#3b82f6').trim();
-
-                this.forcesConfig = [
-                    { id: '1', color: c1, active: !!document.getElementById('f1_active').checked },
-                    { id: '2', color: c2, active: !!document.getElementById('f2_active').checked },
-                    { id: '3', color: c3, active: !!document.getElementById('f3_active').checked },
-                ];
-
-                this.resultantColor = (getComputedStyle(document.documentElement).getPropertyValue('--resultant-color') || '#f59e0b').trim();
-                this.equilibrantColor = (getComputedStyle(document.documentElement).getPropertyValue('--equilibrant-color') || '#8b5cf6').trim();
-                this.componentColor = (getComputedStyle(document.documentElement).getPropertyValue('--component-color') || '#06b6d4').trim();
-
-                document.getElementById('dot-f1').style.backgroundColor = this.forcesConfig[0].color;
-                document.getElementById('dot-f2').style.backgroundColor = this.forcesConfig[1].color;
-                document.getElementById('dot-f3').style.backgroundColor = this.forcesConfig[2].color;
-
-                window.addEventListener('resize', this.resizeCanvas.bind(this));
-                this.addEventListeners();
-                this.resizeCanvas();
+    document.addEventListener('DOMContentLoaded', function () {
+        'use strict';
+        // Definición de unidades con factores de conversión precisos
+        const units = {
+            presion: [ {name:"Pascal",symbol:"Pa",factor:1}, {name:"Hectopascal", symbol:"hPa", factor: 100}, {name:"KiloPascal",symbol:"kPa",factor:1e3}, {name:"Bar",symbol:"bar",factor:1e5}, {name:"Atmósfera estándar",symbol:"atm",factor:101325}, {name:"PSI (libra/pulgada²)",symbol:"psi",factor:6894.75729316836}, {name:"Torr (mmHg)",symbol:"Torr",factor:133.322387415}, {name:"Kilogramo-fuerza/m²", symbol:"kgf/m²", factor: 9.80665}, {name:"Kilogramo-fuerza/cm²", symbol:"kgf/cm²", factor: 98066.5}, ],
+            temperatura: [ {name:"Celsius",symbol:"°C",toBase:v=>v+273.15,fromBase:v=>v-273.15}, {name:"Fahrenheit",symbol:"°F",toBase:v=>(v-32)*5/9+273.15,fromBase:v=>(v-273.15)*9/5+32}, {name:"Kelvin",symbol:"K",toBase:v=>v,fromBase:v=>v} ],
+            longitud: [ {name:"Ángstrom",symbol:"Å",factor:1e-10}, {name:"Nanómetro",symbol:"nm",factor:1e-9}, {name:"Micrómetro",symbol:"µm",factor:1e-6}, {name:"Milímetro",symbol:"mm",factor:1e-3}, {name:"Centímetro",symbol:"cm",factor:1e-2}, {name:"Decímetro",symbol:"dm",factor:1e-1}, {name:"Metro",symbol:"m",factor:1}, {name:"Decámetro",symbol:"dam",factor:1e1}, {name:"Hectómetro",symbol:"hm",factor:1e2}, {name:"Kilómetro",symbol:"km",factor:1e3}, {name:"Pulgada",symbol:"in",factor:0.0254}, {name:"Pie",symbol:"ft",factor:0.3048}, {name:"Yarda",symbol:"yd",factor:0.9144}, {name:"Milla",symbol:"mi",factor:1609.344}, {name:"Año luz",symbol:"ly",factor:9.4607304725808e15} ],
+            area: [ {name:"Milímetro cuadrado",symbol:"mm²",factor:1e-6}, {name:"Centímetro cuadrado",symbol:"cm²",factor:1e-4}, {name:"Decímetro cuadrado",symbol:"dm²",factor:1e-2}, {name:"Metro cuadrado",symbol:"m²",factor:1}, {name:"Área",symbol:"a",factor:1e2}, {name:"Hectárea",symbol:"ha",factor:1e4}, {name:"Kilómetro cuadrado",symbol:"km²",factor:1e6}, {name:"Pulgada cuadrada",symbol:"in²",factor:6.4516e-4}, {name:"Pie cuadrado",symbol:"ft²",factor:9.2903e-2}, {name:"Yarda cuadrada",symbol:"yd²",factor:0.836127}, {name:"Acre",symbol:"acre",factor:4046.86} ],
+            volumen: [ {name:"Milímetro cúbico",symbol:"mm³",factor:1e-9}, {name:"Centímetro cúbico",symbol:"cm³",factor:1e-6}, {name:"Decímetro cúbico",symbol:"dm³",factor:1e-3}, {name:"Metro cúbico",symbol:"m³",factor:1}, {name:"Mililitro",symbol:"mL",factor:1e-6}, {name:"Litro",symbol:"L",factor:1e-3}, {name:"Pulgada cúbica",symbol:"in³",factor:1.6387e-5}, {name:"Pie cúbico",symbol:"ft³",factor:0.0283168}, {name:"Galón (US)",symbol:"gal",factor:0.00378541} ],
+            masa: [ {name:"Miligramo",symbol:"mg",factor:1e-6}, {name:"Centigramo",symbol:"cg",factor:1e-5}, {name:"Decigramo",symbol:"dg",factor:1e-4}, {name:"Gramo",symbol:"g",factor:1e-3}, {name:"Decagramo",symbol:"dag",factor:1e-2}, {name:"Hectogramo",symbol:"hg",factor:1e-1}, {name:"Kilogramo",symbol:"kg",factor:1}, {name:"Tonelada métrica",symbol:"t",factor:1e3}, {name:"Onza",symbol:"oz",factor:0.0283495}, {name:"Libra",symbol:"lb",factor:0.45359237} ],
+            tiempo: [ {name:"Milisegundo",symbol:"ms",factor:1e-3}, {name:"Segundo",symbol:"s",factor:1}, {name:"Minuto",symbol:"min",factor:60}, {name:"Hora",symbol:"h",factor:3600}, {name:"Día",symbol:"d",factor:86400}, {name:"Semana",symbol:"semana",factor:604800}, {name:"Mes (30 días)",symbol:"mes",factor:2592000}, {name:"Año (365 días)",symbol:"año",factor:31536000} ],
+            velocidad: [ {name:"Metro por segundo",symbol:"m/s",factor:1}, {name:"Kilómetro por hora",symbol:"km/h",factor:1/3.6}, {name:"Milla por hora",symbol:"mph",factor:0.44704}, {name:"Nudo",symbol:"knot",factor:0.514444}, {name:"Pie por segundo",symbol:"ft/s",factor:0.3048} ],
+            aceleracion: [ {name:"Metro por segundo²",symbol:"m/s²",factor:1}, {name:"Aceleración de la gravedad",symbol:"g",factor:9.80665}, {name:"Pie por segundo²",symbol:"ft/s²",factor:0.3048} ],
+            fuerza: [ {name:"Newton",symbol:"N",factor:1}, {name:"Kilonewton",symbol:"kN",factor:1e3}, {name:"Dina",symbol:"dyn",factor:1e-5}, {name:"Libra-fuerza",symbol:"lbf",factor:4.44822}, {name:"Kilogramo-fuerza",symbol:"kgf",factor:9.80665} ],
+            densidad: [ {name:"Kilogramo por metro cúbico",symbol:"kg/m³",factor:1}, {name:"Gramo por cm cúbico",symbol:"g/cm³",factor:1e3}, {name:"Gramo por litro",symbol:"g/L",factor:1}, {name:"Libra por pie cúbico",symbol:"lb/ft³",factor:16.0185} ],
+            pesoEspecifico: [ {name:"Newton por metro cúbico",symbol:"N/m³",factor:1}, {name:"Kilonewton por metro cúbico",symbol:"kN/m³",factor:1e3}, {name:"Libra-fuerza por pie cúbico",symbol:"lbf/ft³",factor:157.087} ],
+            energia: [ {name:"Joule",symbol:"J",factor:1}, {name:"Kilojoule",symbol:"kJ",factor:1e3}, {name:"Caloría (term.)",symbol:"cal",factor:4.184}, {name:"Kilocaloría (kcal)",symbol:"kcal",factor:4184}, {name:"Kilovatio-hora",symbol:"kWh",factor:3.6e6}, {name:"Electronvoltio",symbol:"eV",factor:1.60218e-19} ],
+            potencia: [ {name:"Vatio (Watt)",symbol:"W",factor:1}, {name:"Kilovatio",symbol:"kW",factor:1e3}, {name:"Caballo de fuerza (HP mec.)",symbol:"hp",factor:745.7}, {name:"Caballo de vapor (CV)",symbol:"CV",factor:735.499} ],
+        };
+        const dom = {
+            category: document.getElementById('category'), fromUnit: document.getElementById('fromUnit'), toUnit: document.getElementById('toUnit'),
+            value: document.getElementById('value'), convertBtn: document.getElementById('convertBtn'), resultContainer: document.getElementById('resultContainer'),
+            resultValue: document.getElementById('resultValue'), steps: document.getElementById('steps'), tabs: document.querySelectorAll('.tab'),
+            theoryContents: document.querySelectorAll('.theory-content'), historySection: document.getElementById('historySection'),
+            historyList: document.getElementById('historyList'), clearHistoryBtn: document.getElementById('clearHistory'),
+            liveRegion: document.getElementById('live-region'), valueHint: document.getElementById('valueHint'),
+            swapBtn: document.getElementById('swapBtn'), errorContainer: document.getElementById('error-container'),
+            toggleStepsBtn: document.getElementById('toggleStepsBtn'),
+            toggleStepsContainer: document.getElementById('toggleStepsContainer'),
+        };
+        let conversionHistory = JSON.parse(localStorage.getItem('conversionHistory')) || [];
+        
+        // Cache de búsqueda de unidades para mejor performance
+        let unitLookupCache = {};
+        let baseUnitCache = {};
+        
+        // Pre-ordenar unidades una sola vez e identificar unidades base
+        Object.keys(units).forEach(category => {
+            units[category].sort((a, b) => a.name.localeCompare(b.name));
+            // Cachear unidad base (factor = 1) para cada categoría
+            const baseUnit = units[category].find(u => u.factor === 1);
+            if (baseUnit) {
+                baseUnitCache[category] = baseUnit;
             }
+        });
 
-            resizeCanvas() {
-                const container = this.canvas.parentElement;
-                const w = Math.max(300, container.clientWidth);
-                const h = Math.max(200, container.clientHeight);
-                const newWidth = Math.floor(w);
-                const newHeight = Math.floor(h);
-                
-                // Solo redimensionar si cambió el tamaño
-                if (this.canvas.width !== newWidth || this.canvas.height !== newHeight) {
-                    this.canvas.width = newWidth;
-                    this.canvas.height = newHeight;
-                    this.origin = { x: newWidth / 2, y: newHeight / 2 };
-                    this.updateSimulation();
-                }
-            }
-
-            resizeModalCanvas() {
-                const container = this.modalCanvas.parentElement;
-                this.modalCanvas.width = container.clientWidth;
-                this.modalCanvas.height = container.clientHeight;
-            }
-
-            addEventListeners() {
-                // Cache elementos DOM comunes
-                this.domCache = {
-                    showComponents: document.getElementById('show-components'),
-                    showGrid: document.getElementById('show-grid'),
-                    clearBtn: document.getElementById('clear-all'),
-                    zoomBtn: document.getElementById('zoom-btn'),
-                    closeModal: document.querySelector('.close-modal'),
-                    modal: document.getElementById('modal-grafico'),
-                    resultElements: {
-                        mag: document.getElementById('resultant_mag'),
-                        angle: document.getElementById('resultant_angle'),
-                        components: document.getElementById('components'),
-                        eqMag: document.getElementById('equilibrant_mag'),
-                        eqAngle: document.getElementById('equilibrant_angle'),
-                        equilibrium: document.getElementById('equilibrium')
-                    }
-                };
-                
-                // Event delegation para inputs numéricos (más eficiente)
-                document.querySelector('.controls').addEventListener('input', (e) => {
-                    if (e.target.type === 'number') {
-                        this._cachedForces = null; // Invalidar cache
-                        this.debouncedUpdate();
-                    }
-                });
-
-                // Toggles con lógica optimizada
-                const toggles = ['f1_active', 'f2_active', 'f3_active'];
-                toggles.forEach((toggleId, index) => {
-                    const toggle = document.getElementById(toggleId);
-                    const prefix = toggleId.replace('_active', '');
-                    const magnitudeInput = document.getElementById(`${prefix}_magnitude`);
-                    const angleInput = document.getElementById(`${prefix}_angle`);
-                    
-                    // Inicialización
-                    magnitudeInput.disabled = !toggle.checked;
-                    angleInput.disabled = !toggle.checked;
-                    
-                    // Event listener
-                    toggle.addEventListener('change', () => {
-                        this.forcesConfig[index].active = toggle.checked;
-                        magnitudeInput.disabled = !toggle.checked;
-                        angleInput.disabled = !toggle.checked;
-                        this._cachedForces = null;
-                        this.debouncedUpdate();
-                    });
-                });
-
-                this.domCache.showComponents.addEventListener('change', () => this.debouncedUpdate());
-                this.domCache.showGrid.addEventListener('change', () => this.debouncedUpdate());
-                this.domCache.clearBtn.addEventListener('click', () => this.clearAll());
-                
-                this.domCache.zoomBtn.addEventListener('click', () => this.openModal());
-                this.domCache.closeModal.addEventListener('click', () => this.closeModal());
-                this.domCache.modal.addEventListener('click', (e) => {
-                    if (e.target === this.domCache.modal) this.closeModal();
-                });
-                
-                // Debounced resize handler
-                window.addEventListener('resize', () => this.debouncedResize());
-                
-                // Tecla ESC para cerrar modal
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape' && this.domCache.modal.style.display === 'block') {
-                        this.closeModal();
-                    }
-                });
-            }
-            
-            debouncedUpdate() {
-                if (this._updateTimeout) clearTimeout(this._updateTimeout);
-                this._updateTimeout = setTimeout(() => this.updateSimulation(), this.DEBOUNCE_DELAY);
-            }
-            
-            debouncedResize() {
-                if (this._resizeTimeout) clearTimeout(this._resizeTimeout);
-                this._resizeTimeout = setTimeout(() => {
-                    this.resizeCanvas();
-                    if (this.domCache.modal.style.display === 'block') {
-                        this.resizeModalCanvas();
-                        this.drawModal();
-                    }
-                }, 150);
-            }
-
-            openModal() {
-                this.domCache.modal.style.display = 'block';
-                this.resizeModalCanvas();
-                this.drawModal();
-                // Prevenir scroll del body cuando el modal está abierto
-                document.body.style.overflow = 'hidden';
-            }
-
-            closeModal() {
-                this.domCache.modal.style.display = 'none';
-                document.body.style.overflow = '';
-            }
-
-
-
-            getForceData() {
-                // Usar cache si está disponible
-                if (this._cachedForces) return this._cachedForces;
-                
-                const subScripts = ['₁','₂','₃'];
-                this._cachedForces = this.forcesConfig.map((config, idx) => {
-                    const prefix = `f${config.id}`;
-                    // Usar referencias DOM cacheadas (no getElementById en cada frame)
-                    const inputs = this.inputRefs[prefix];
-                    const magnitude = inputs?.magnitude ? (parseFloat(inputs.magnitude.value) || 0) : 0;
-                    const angle = inputs?.angle ? (parseFloat(inputs.angle.value) || 0) : 0;
-                    
-                    return {
-                        active: config.active,
-                        magnitude,
-                        angle,
-                        color: config.color,
-                        label: `F${subScripts[idx] || config.id}`
-                    };
-                });
-                
-                return this._cachedForces;
-            }
-
-            calculateComponents(magnitude, angleDeg) {
-                const rad = angleDeg * Math.PI / 180;
-                return { x: magnitude * Math.cos(rad), y: magnitude * Math.sin(rad) };
-            }
-
-            calculateResultant(forces) {
-                let totalX = 0, totalY = 0;
-                
-                // Optimización: evitar llamadas a función en el loop
-                for (const f of forces) {
-                    if (f.active && f.magnitude > 0) {
-                        const rad = f.angle * Math.PI / 180;
-                        totalX += f.magnitude * Math.cos(rad);
-                        totalY += f.magnitude * Math.sin(rad);
-                    }
-                }
-                
-                const magnitude = Math.hypot(totalX, totalY);
-                let angle = 0;
-                
-                if (magnitude > this.MIN_MAGNITUDE) {
-                    angle = Math.atan2(totalY, totalX) * 180 / Math.PI;
-                    if (angle < 0) angle += 360;
-                }
-                
-                return { magnitude, angle, components: { x: totalX, y: totalY } };
-            }
-
-            calculateEquilibrant(resultant) {
-                if (resultant.magnitude < this.MIN_MAGNITUDE) {
-                    return { magnitude: 0, angle: 0 };
-                }
-                // Operación modular más eficiente
-                const eqAngle = (resultant.angle + 180) % 360;
-                return { magnitude: resultant.magnitude, angle: eqAngle };
-            }
-
-            updateScale(forces, resultant, canvasWidth, canvasHeight) {
-                const activeMagnitudes = forces
-                    .filter(f => f.active && f.magnitude > 0)
-                    .map(f => f.magnitude);
-                    
-                activeMagnitudes.push(resultant.magnitude);
-                
-                const maxMag = Math.max(...activeMagnitudes, 1);
-                const canvasMaxDim = Math.min(canvasWidth, canvasHeight);
-                const scale = (canvasMaxDim * this.CANVAS_PADDING_RATIO) / maxMag;
-                
-                return { scale, maxMag };
-            }
-
-            clearCanvas(ctx, width, height, showGrid, origin) {
-                // Usar fillRect es más rápido que clearRect para canvas opacos
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, width, height);
-                
-                if (showGrid) {
-                    this.drawGrid(ctx, width, height, origin);
-                }
-                
-                // Ejes cartesianos
-                ctx.save();
-                ctx.strokeStyle = '#aaa';
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.moveTo(0, origin.y);
-                ctx.lineTo(width, origin.y);
-                ctx.moveTo(origin.x, 0);
-                ctx.lineTo(origin.x, height);
-                ctx.stroke();
-                
-                // Etiquetas de ejes
-                ctx.fillStyle = '#666';
-                ctx.font = '13px "Segoe UI", sans-serif';
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'top';
-                ctx.fillText('X', width - 20, origin.y - 20);
-                ctx.fillText('Y', origin.x + 8, 8);
-                ctx.restore();
-            }
-            
-            drawGrid(ctx, width, height, origin) {
-                ctx.save();
-                const gridColor = getComputedStyle(document.documentElement)
-                    .getPropertyValue('--grid-color').trim() || 'rgba(0,0,0,0.05)';
-                ctx.strokeStyle = gridColor;
-                ctx.lineWidth = 0.5;
-                
-                ctx.beginPath();
-                // Líneas verticales
-                for (let x = origin.x % this.GRID_SIZE; x < width; x += this.GRID_SIZE) {
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, height);
-                }
-                // Líneas horizontales
-                for (let y = origin.y % this.GRID_SIZE; y < height; y += this.GRID_SIZE) {
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(width, y);
-                }
-                ctx.stroke();
-                ctx.restore();
-            }
-            
-            // --- INICIO DE MEJORAS GRÁFICAS ---
-
-            drawVector(ctx, origin, scale, vector, maxMag) {
-                if (!vector || vector.magnitude <= 0) return;
-                
-                ctx.save();
-                const rad = vector.angle * Math.PI / 180;
-                const comp = {
-                    x: vector.magnitude * Math.cos(rad),
-                    y: vector.magnitude * Math.sin(rad)
-                };
-                const start = origin;
-                const end = {
-                    x: start.x + comp.x * scale,
-                    y: start.y - comp.y * scale
-                };
-
-                // Grosor adaptativo basado en la magnitud relativa
-                const lineWidth = 2 + (vector.magnitude / maxMag) * 4;
-                ctx.lineWidth = lineWidth;
-                ctx.strokeStyle = vector.color || '#000';
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                
-                ctx.beginPath();
-                ctx.moveTo(start.x, start.y);
-                ctx.lineTo(end.x, end.y);
-                ctx.stroke();
-                
-                // Punta de flecha
-                this.drawArrowHead(ctx, start, end, vector.color || '#000', lineWidth);
-                
-                ctx.restore();
-
-                this.drawVectorLabel(ctx, end, vector);
-            }
-            
-            drawVectorComponents(ctx, origin, scale, vector, maxMag) {
-                if (!vector || vector.magnitude <= 0) return;
-                
-                ctx.save();
-                const rad = vector.angle * Math.PI / 180;
-                const comp = {
-                    x: vector.magnitude * Math.cos(rad),
-                    y: vector.magnitude * Math.sin(rad)
-                };
-                const tip = {
-                    x: origin.x + comp.x * scale,
-                    y: origin.y - comp.y * scale
-                };
-                const corner = { x: tip.x, y: origin.y };
-
-                ctx.strokeStyle = this.componentColor;
-                ctx.fillStyle = this.componentColor;
-                ctx.lineWidth = 1.5;
-                ctx.globalAlpha = 0.8;
-
-                // Componente X
-                if (Math.abs(comp.x) > this.MIN_MAGNITUDE) {
-                    ctx.beginPath();
-                    ctx.moveTo(origin.x, origin.y);
-                    ctx.lineTo(corner.x, corner.y);
-                    ctx.stroke();
-                    this.drawArrowHead(ctx, origin, corner, this.componentColor, 1.5, 0.8);
-                }
-
-                // Componente Y
-                if (Math.abs(comp.y) > this.MIN_MAGNITUDE) {
-                    ctx.beginPath();
-                    ctx.moveTo(corner.x, corner.y);
-                    ctx.lineTo(tip.x, tip.y);
-                    ctx.stroke();
-                    this.drawArrowHead(ctx, corner, tip, this.componentColor, 1.5, 0.8);
-                }
-                
-                // Línea punteada al vector original
-                ctx.setLineDash([3, 4]);
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = 'rgba(100, 116, 139, 0.4)';
-                ctx.beginPath();
-                ctx.moveTo(origin.x, origin.y);
-                ctx.lineTo(tip.x, tip.y);
-                ctx.stroke();
-
-                ctx.restore();
-
-                // Etiquetas de componentes
-                ctx.save();
-                ctx.fillStyle = this.componentColor;
-                ctx.font = '12px "Segoe UI", sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-
-                if (Math.abs(comp.x) > this.MIN_MAGNITUDE) {
-                    ctx.fillText('Fx', (origin.x + corner.x) / 2, corner.y + (comp.y > 0 ? -8 : 20));
-                }
-                if (Math.abs(comp.y) > this.MIN_MAGNITUDE) {
-                    ctx.fillText('Fy', corner.x + (comp.x > 0 ? 15 : -15), (corner.y + tip.y) / 2);
-                }
-                ctx.restore();
-            }
-            
-            drawArrowHead(ctx, start, end, color, lineWidth, scaleFactor = 1) {
-                ctx.save();
-                const headLength = (8 + lineWidth * 1.2) * scaleFactor;
-                const headAngle = Math.PI / 7;
-                const angle = Math.atan2(end.y - start.y, end.x - start.x);
-                
-                ctx.fillStyle = color;
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-                ctx.lineWidth = 1;
-
-                ctx.beginPath();
-                ctx.moveTo(end.x, end.y);
-                ctx.lineTo(
-                    end.x - headLength * Math.cos(angle - headAngle),
-                    end.y - headLength * Math.sin(angle - headAngle)
-                );
-                ctx.lineTo(
-                    end.x - headLength * Math.cos(angle + headAngle),
-                    end.y - headLength * Math.sin(angle + headAngle)
-                );
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-                ctx.restore();
-            }
-
-            drawVectorLabel(ctx, pos, vector) {
-                ctx.save();
-                ctx.font = 'bold 13px "Segoe UI", sans-serif';
-                const text = `${vector.label}: ${vector.magnitude.toFixed(1)} N`;
-                const metrics = ctx.measureText(text);
-                const textWidth = metrics.width;
-                const textHeight = 14;
-                const padding = 6;
-                
-                let labelX = pos.x + 15;
-                let labelY = pos.y - 8;
-                
-                // Ajustar posición para mantener la etiqueta dentro del canvas
-                if (labelX + textWidth + padding * 2 > ctx.canvas.width) {
-                    labelX = pos.x - textWidth - 25;
-                }
-                if (labelY - textHeight < 0) {
-                    labelY = pos.y + textHeight + 10;
-                }
-                if (labelY + 8 > ctx.canvas.height) {
-                    labelY = pos.y - textHeight;
-                }
-
-                // Fondo con sombra
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-                ctx.shadowBlur = 5;
-                ctx.shadowOffsetY = 2;
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-                ctx.lineWidth = 1;
-                
-                ctx.beginPath();
-                const rectX = labelX - padding;
-                const rectY = labelY - textHeight + 2;
-                const rectW = textWidth + padding * 2;
-                const rectH = textHeight + padding;
-                
-                // Rectángulo redondeado (compatible con todos los navegadores)
-                const radius = 5;
-                ctx.moveTo(rectX + radius, rectY);
-                ctx.lineTo(rectX + rectW - radius, rectY);
-                ctx.quadraticCurveTo(rectX + rectW, rectY, rectX + rectW, rectY + radius);
-                ctx.lineTo(rectX + rectW, rectY + rectH - radius);
-                ctx.quadraticCurveTo(rectX + rectW, rectY + rectH, rectX + rectW - radius, rectY + rectH);
-                ctx.lineTo(rectX + radius, rectY + rectH);
-                ctx.quadraticCurveTo(rectX, rectY + rectH, rectX, rectY + rectH - radius);
-                ctx.lineTo(rectX, rectY + radius);
-                ctx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
-                ctx.closePath();
-                
-                ctx.fill();
-                ctx.stroke();
-                
-                ctx.restore();
-
-                // Texto
-                ctx.fillStyle = vector.color || '#000';
-                ctx.fillText(text, labelX, labelY);
-            }
-
-            drawScaleBar(ctx, width, height, scale, maxMag) {
-                if (maxMag < 1) return;
-                
-                // Barra de escala visual
-                const niceMagnitude = Math.pow(10, Math.floor(Math.log10(maxMag / 2.5)));
-                const barLength = niceMagnitude * scale;
-                
-                const startX = 20;
-                const y = height - 20;
-
-                ctx.save();
-                ctx.strokeStyle = '#334155';
-                ctx.fillStyle = '#334155';
-                ctx.lineWidth = 2;
-                
-                // Línea principal
-                ctx.beginPath();
-                ctx.moveTo(startX, y);
-                ctx.lineTo(startX + barLength, y);
-                ctx.stroke();
-                
-                // Ticks en los extremos
-                ctx.beginPath();
-                ctx.moveTo(startX, y - 4);
-                ctx.lineTo(startX, y + 4);
-                ctx.moveTo(startX + barLength, y - 4);
-                ctx.lineTo(startX + barLength, y + 4);
-                ctx.stroke();
-                
-                // Etiqueta
-                ctx.font = '12px "Segoe UI", sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
-                ctx.fillText(`${niceMagnitude} N`, startX + barLength / 2, y - 18);
-                ctx.restore();
-            }
-
-            updateDisplay(resultant, equilibrant) {
-                const fmt = (n, decimals = 2) => Number(n).toFixed(decimals);
-                const elements = this.domCache.resultElements;
-                
-                // Batch DOM updates
-                elements.mag.innerHTML = `\\(${fmt(resultant.magnitude, 2)}\\ \\text{N}\\)`;
-                elements.angle.innerHTML = `\\(${fmt(resultant.angle, 1)}^\\circ\\)`;
-                elements.components.innerHTML = `\\((${fmt(resultant.components.x, 2)},\\ ${fmt(resultant.components.y, 2)})\\ \\text{N}\\)`;
-                elements.eqMag.innerHTML = `\\(${fmt(equilibrant.magnitude, 2)}\\ \\text{N}\\)`;
-                elements.eqAngle.innerHTML = `\\(${fmt(equilibrant.angle, 1)}^\\circ\\)`;
-
-                // Throttled MathJax typeset (evitar sobrecarga con sliders futuros)
-                if (this._mathJaxTimeout) clearTimeout(this._mathJaxTimeout);
-                this._mathJaxTimeout = setTimeout(() => {
-                    if (window.MathJax?.typesetPromise) {
-                        // Solo typeset el contenedor de resultados, no todo el documento
-                        const resultsContainer = elements.mag.closest('.results');
-                        if (resultsContainer) {
-                            window.MathJax.typesetPromise([resultsContainer])
-                                .catch(err => console.warn('MathJax error:', err));
-                        }
-                    }
-                }, 100); // 100ms throttle para MathJax
-
-                // Actualizar indicador de equilibrio
-                const isEquilibrium = resultant.magnitude < this.EQUILIBRIUM_TOLERANCE;
-                const equilibriumEl = elements.equilibrium;
-                
-                if (isEquilibrium) {
-                    equilibriumEl.textContent = '✅ Sistema en Equilibrio (ΣF ≈ 0)';
-                    equilibriumEl.className = 'equilibrium-indicator equilibrium-yes';
-                } else {
-                    equilibriumEl.textContent = `❌ Sistema NO está en Equilibrio (|F_R| = ${fmt(resultant.magnitude, 2)} N)`;
-                    equilibriumEl.className = 'equilibrium-indicator equilibrium-no';
-                }
-            }
-
-            drawSimulation(ctx, width, height, forces, resultant, equilibrant) {
-                const origin = { x: width / 2, y: height / 2 };
-                const showComponents = this.domCache.showComponents.checked;
-                const showGrid = this.domCache.showGrid.checked;
-                const { scale, maxMag } = this.updateScale(forces, resultant, width, height);
-                
-                this.clearCanvas(ctx, width, height, showGrid, origin);
-
-                // Dibujar fuerzas activas
-                for (const f of forces) {
-                    if (f.active && f.magnitude > 0) {
-                        if (showComponents) {
-                            this.drawVectorComponents(ctx, origin, scale, f, maxMag);
-                        } else {
-                            this.drawVector(ctx, origin, scale, f, maxMag);
-                        }
-                    }
-                }
-
-                // Dibujar resultante
-                if (resultant.magnitude > this.MIN_MAGNITUDE) {
-                    this.drawVector(ctx, origin, scale, {
-                        magnitude: resultant.magnitude,
-                        angle: resultant.angle,
-                        color: this.resultantColor,
-                        label: 'F_R'
-                    }, maxMag);
-                }
-
-                // Dibujar equilibrante (solo si el sistema no está en equilibrio)
-                if (resultant.magnitude > this.EQUILIBRIUM_TOLERANCE && equilibrant.magnitude > this.MIN_MAGNITUDE) {
-                    this.drawVector(ctx, origin, scale, {
-                        magnitude: equilibrant.magnitude,
-                        angle: equilibrant.angle,
-                        color: this.equilibrantColor,
-                        label: 'F_E'
-                    }, maxMag);
-                }
-
-                this.drawScaleBar(ctx, width, height, scale, maxMag);
-            }
-
-            updateSimulation() {
-                if (!this.ctx) return;
-                const forces = this.getForceData();
-                const resultant = this.calculateResultant(forces);
-                const equilibrant = this.calculateEquilibrant(resultant);
-                this.drawSimulation(this.ctx, this.canvas.width, this.canvas.height, forces, resultant, equilibrant);
-                this.updateDisplay(resultant, equilibrant);
-            }
-            
-            drawModal() {
-                const forces = this.getForceData();
-                const resultant = this.calculateResultant(forces);
-                const equilibrant = this.calculateEquilibrant(resultant);
-                this.drawSimulation(this.modalCtx, this.modalCanvas.width, this.modalCanvas.height, forces, resultant, equilibrant);
-            }
-
-            clearAll() {
-                for (const config of this.forcesConfig) {
-                    const prefix = `f${config.id}`;
-                    // Usar referencias cacheadas cuando sea posible
-                    const inputs = this.inputRefs[prefix];
-                    const activeToggle = document.getElementById(`${prefix}_active`);
-                    
-                    if (inputs?.magnitude) inputs.magnitude.value = '0';
-                    if (inputs?.angle) inputs.angle.value = '0';
-                    if (activeToggle && !activeToggle.checked) {
-                        activeToggle.checked = true;
-                        activeToggle.dispatchEvent(new Event('change'));
-                    }
-                }
-                this._cachedForces = null;
-                this.updateSimulation();
+        function init() {
+            loadUnitsForCategory();
+            setupEventListeners();
+            updateValueInputRestrictions();
+            if (conversionHistory.length > 0) {
+                updateHistoryDisplay();
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            window.simulator = new ForceSimulator();
-        });
+        function setupEventListeners() {
+            dom.category.addEventListener('change', () => { loadUnitsForCategory(); updateValueInputRestrictions(); });
+            dom.tabs.forEach(tab => tab.addEventListener('click', handleTabClick));
+            dom.value.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); dom.convertBtn.click(); } });
+            dom.value.addEventListener('input', validateNumericInput);
+            dom.convertBtn.addEventListener('click', performConversion);
+            dom.swapBtn.addEventListener('click', swapUnits);
+            dom.clearHistoryBtn.addEventListener('click', clearHistory);
+            dom.toggleStepsBtn.addEventListener('click', toggleStepsVisibility);
+        }
+
+        function toggleStepsVisibility(event) {
+            const isHidden = dom.steps.style.display === 'none' || dom.steps.style.display === '';
+            dom.steps.style.display = isHidden ? 'block' : 'none';
+            event.currentTarget.textContent = isHidden ? 'Ocultar Pasos' : 'Mostrar Pasos de la Conversión';
+            if(isHidden) {
+                if (window.MathJax) MathJax.typesetPromise([dom.steps]);
+            }
+        }
+
+        function handleTabClick(event) {
+            dom.tabs.forEach(t => t.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            dom.theoryContents.forEach(c => c.classList.remove('active'));
+            const contentId = `${event.currentTarget.dataset.tab}-content`;
+            document.getElementById(contentId).classList.add('active');
+            if (window.MathJax) MathJax.typesetPromise();
+        }
+
+        function swapUnits() {
+            const fromValue = dom.fromUnit.value;
+            dom.fromUnit.value = dom.toUnit.value;
+            dom.toUnit.value = fromValue;
+            if (dom.resultContainer.style.display === 'block') {
+                const resultText = dom.resultValue.textContent.split('=')[1].trim().split(' ')[0];
+                dom.value.value = resultText.replace(/,/g, '');
+                performConversion();
+            }
+        }
+
+        function clearHistory() {
+            conversionHistory = [];
+            localStorage.removeItem('conversionHistory');
+            updateHistoryDisplay();
+        }
+
+        function loadUnitsForCategory() {
+            const categoryValue = dom.category.value;
+            const categoryUnits = units[categoryValue];
+            
+            // Actualizar cache de búsqueda para la categoría actual
+            unitLookupCache = {};
+            categoryUnits.forEach(unit => {
+                unitLookupCache[unit.symbol] = unit;
+            });
+            
+            const createOption = u => new Option(`${u.name} (${u.symbol})`, u.symbol);
+            [dom.fromUnit, dom.toUnit].forEach(select => {
+                select.innerHTML = '';
+                categoryUnits.forEach(u => select.add(createOption(u)));
+            });
+            if (categoryUnits.length > 1) dom.toUnit.selectedIndex = 1;
+        }
+
+        function updateValueInputRestrictions() {
+            dom.valueHint.textContent = (dom.category.value === 'temperatura') ? 'Se permiten valores negativos' : 'Usa punto para decimales. Ej: 1.5e-3';
+        }
+
+        function validateNumericInput(event) {
+            let value = event.target.value;
+            // Reemplazar comas por puntos
+            value = value.replace(/,/g, '.');
+            // Permitir solo dígitos, punto, e/E y signo menos
+            value = value.replace(/[^\d.eE-]/g, '');
+            // Evitar múltiples puntos decimales
+            const parts = value.split('.');
+            if (parts.length > 2) {
+                value = parts[0] + '.' + parts.slice(1).join('');
+            }
+            // Evitar múltiples 'e' en notación científica
+            const eParts = value.split(/e/i);
+            if (eParts.length > 2) {
+                value = eParts[0] + 'e' + eParts.slice(1).join('');
+            }
+            // Permitir signo menos solo al inicio o después de 'e'
+            value = value.replace(/(?!^)-(?!.*e.*$)/g, '');
+            
+            event.target.value = value;
+        }
+
+        // Formateo consistente: usar notación científica para valores muy grandes o muy pequeños
+        const formatNumberForDisplay = (num) => {
+             if (num === 0) return '0';
+             if (Math.abs(num) >= 1e12 || (Math.abs(num) < 1e-6 && num !==0)) return num.toExponential(6);
+             return new Intl.NumberFormat('en-US', { maximumFractionDigits: 8, useGrouping: true }).format(num);
+        };
+
+        const formatNumberForTex = (num) => {
+            if (num === 0) return '0';
+            // Usar mismo umbral que formatNumberForDisplay para consistencia
+            if (Math.abs(num) >= 1e12 || (Math.abs(num) < 1e-6 && num !==0)) {
+                return num.toExponential(6).replace(/e\+?/, ' \\times 10^{') + '}';
+            }
+            return new Intl.NumberFormat('en-US', { maximumFractionDigits: 8, useGrouping: false }).format(num);
+        };
+        
+        const formatSymbolForTex = (s) => {
+            let temp_s = s.replace(/°/g, '||^{\\circ}||').replace(/²/g, '||^{2}||').replace(/³/g, '||^{3}||');
+            const parts = temp_s.split('||');
+            return parts.map((part, index) => {
+                if (index % 2 === 0) { return part ? `\\text{${part}}` : ''; } 
+                else { return part; }
+            }).join('');
+        };
+
+        function performConversion() {
+            clearError();
+            dom.toggleStepsContainer.style.display = 'none';
+            dom.resultContainer.style.display = 'none';
+
+            const rawValue = dom.value.value.trim() || dom.value.placeholder;
+            if (!rawValue) { showError('Por favor, ingresa un valor numérico.'); return; }
+
+            const value = parseFloat(rawValue);
+            if (isNaN(value) || !isFinite(value)) { showError('El valor ingresado no es un número válido.'); return; }
+            
+            const category = dom.category.value;
+            const fromUnitSymbol = dom.fromUnit.value;
+            const toUnitSymbol = dom.toUnit.value;
+
+            if (value < 0 && category !== 'temperatura') { showError('Los valores negativos solo se permiten para temperatura.'); return; }
+            if (category === 'temperatura') {
+                if ((fromUnitSymbol === '°C' && value < -273.15) || (fromUnitSymbol === '°F' && value < -459.67) || (fromUnitSymbol === 'K' && value < 0)) {
+                    showError('El valor no puede ser inferior al cero absoluto.'); return;
+                }
+            }
+            if (fromUnitSymbol === toUnitSymbol) { showError('Selecciona unidades de origen y destino diferentes.'); return; }
+
+            // Usar cache para búsqueda O(1) en vez de O(n)
+            const fromUnit = unitLookupCache[fromUnitSymbol];
+            const toUnit = unitLookupCache[toUnitSymbol];
+            
+            if (!fromUnit || !toUnit) {
+                showError('Error: No se encontraron las unidades seleccionadas.');
+                return;
+            }
+            
+            // Calcular resultado con precisión limitada para evitar errores de punto flotante IEEE 754
+            let result = (category === 'temperatura') ? toUnit.fromBase(fromUnit.toBase(value)) : (value * fromUnit.factor) / toUnit.factor;
+            // Limitar precisión a 12 dígitos significativos para evitar errores de redondeo
+            result = parseFloat(result.toPrecision(12));
+            
+            const texResultText = `\\[ ${formatNumberForTex(value)} \\, ${formatSymbolForTex(fromUnitSymbol)} = ${formatNumberForTex(result)} \\, ${formatSymbolForTex(toUnitSymbol)} \\]`;
+            dom.resultValue.innerHTML = texResultText;
+            dom.liveRegion.textContent = `Resultado: ${value} ${fromUnitSymbol} es igual a ${result} ${toUnitSymbol}`;
+            
+            showConversionSteps(value, fromUnit, toUnit, category, result);
+            dom.resultContainer.style.display = 'block';
+            
+            dom.toggleStepsContainer.style.display = 'block';
+            dom.steps.style.display = 'none';
+            dom.toggleStepsBtn.textContent = 'Mostrar Pasos de la Conversión';
+            
+            if (window.MathJax) MathJax.typesetPromise([dom.resultContainer]);
+            
+            addToHistory(value, fromUnitSymbol, result, toUnitSymbol);
+        }
+
+        function showConversionSteps(value, fromUnit, toUnit, category, result) {
+            let stepsHtml = '<h4>Pasos de la Conversión:</h4>';
+            const fromUnitTex = formatSymbolForTex(fromUnit.symbol);
+            const toUnitTex = formatSymbolForTex(toUnit.symbol);
+            
+            stepsHtml += `<div class="step"><span class="step-number">1</span><div>Valor original: \\( ${formatNumberForTex(value)} \\, ${fromUnitTex} \\)</div></div>`;
+            
+            if (category === 'temperatura') {
+                const baseValue = fromUnit.toBase(value);
+                stepsHtml += `<div class="step"><span class="step-number">2</span><div>Convertir a Kelvin (base): \\( ${formatNumberForTex(baseValue)} \\, \\text{K} \\)</div></div>`;
+                stepsHtml += `<div class="step"><span class="step-number">3</span><div>Convertir a destino: \\( ${formatNumberForTex(result)} \\, ${toUnitTex} \\)</div></div>`;
+            } else {
+                // Usar cache O(1) en lugar de find O(n)
+                const baseUnit = baseUnitCache[category];
+                if (!baseUnit) {
+                    dom.steps.innerHTML = '<p>No se pudo generar los pasos.</p>'; return;
+                }
+                const baseUnitSymbol = formatSymbolForTex(baseUnit.symbol);
+                const baseValue = value * fromUnit.factor;
+                stepsHtml += `<div class="step"><span class="step-number">2</span><div>A unidad base (\\(${baseUnitSymbol}\\)):<br>\\(${formatNumberForTex(value)} \\, ${fromUnitTex} \\times ${fromUnit.factor} = ${formatNumberForTex(baseValue)} \\, ${baseUnitSymbol}\\)</div></div>`;
+                stepsHtml += `<div class="step"><span class="step-number">3</span><div>A unidad destino (\\(${toUnitTex}\\)):<br>\\(${formatNumberForTex(baseValue)} \\, ${baseUnitSymbol} \\div ${toUnit.factor} = ${formatNumberForTex(result)} \\, ${toUnitTex}\\)</div></div>`;
+            }
+            stepsHtml += `<div class="step" style="background-color: #e8f5e9; font-weight: bold;"><span class="step-number" style="background-color: var(--success-color);">✔</span>Resultado Final: \\( ${formatNumberForTex(result)} \\, ${toUnitTex} \\)</div>`;
+            dom.steps.innerHTML = stepsHtml;
+        }
+
+        function addToHistory(value, fromUnit, result, toUnit) {
+            const MAX_HISTORY_ITEMS = 10;
+            const newEntry = { value, fromUnit, result, toUnit, timestamp: new Date().toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }) };
+            conversionHistory.unshift(newEntry);
+            if (conversionHistory.length > MAX_HISTORY_ITEMS) conversionHistory.pop();
+            localStorage.setItem('conversionHistory', JSON.stringify(conversionHistory));
+            updateHistoryDisplay();
+        }
+
+        function updateHistoryDisplay() {
+            if (conversionHistory.length === 0) {
+                 dom.historySection.style.display = 'none';
+                 return;
+            }
+            dom.historyList.innerHTML = conversionHistory.map(c => `
+                <div class="history-item">
+                    <span>${formatNumberForDisplay(c.value)} ${c.fromUnit} → ${formatNumberForDisplay(c.result)} ${c.toUnit}</span>
+                    <span class="history-item-date">${c.timestamp}</span>
+                </div>`).join('');
+            dom.historySection.style.display = 'block';
+        }
+        
+        function showError(message) {
+            clearError();
+            dom.resultContainer.style.display = 'none';
+            dom.toggleStepsContainer.style.display = 'none';
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            errorDiv.setAttribute('role', 'alert');
+            dom.errorContainer.appendChild(errorDiv);
+            dom.liveRegion.textContent = `Error: ${message}`;
+        }
+        const clearError = () => { dom.errorContainer.innerHTML = ''; };
+
+        init();
+    });
     </script>
 </body>
 </html>
