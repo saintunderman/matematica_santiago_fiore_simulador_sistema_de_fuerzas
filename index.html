@@ -58,6 +58,8 @@
             border-radius: 20px;
             overflow: hidden;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            /* Optimización: usar will-change con precaución */
+            contain: layout style paint;
         }
 
         .header {
@@ -98,7 +100,9 @@
             font-weight: 600;
             padding: 8px 15px;
             border-radius: 5px;
-            transition: background-color 0.3s;
+            transition: background-color 0.2s ease-out;
+            /* Optimización: mejor interacción táctil */
+            touch-action: manipulation;
         }
 
         .nav-menu a:hover,
@@ -150,12 +154,15 @@
             border-radius: 10px;
             margin-bottom: 20px;
             border: 1px solid #e2e8f0;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s ease-out;
+            /* Optimización: evitar repaint en hover */
+            will-change: transform;
         }
 
         .force-input:focus-within {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            /* Optimización: sombra más eficiente */
+            filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.05));
         }
 
         .force-header {
@@ -197,12 +204,13 @@
             border-radius: 8px;
             border: 2px solid #cbd5e0;
             font-size: 1em;
-            transition: border-color 0.3s;
+            transition: border-color 0.2s ease-out;
+            /* Optimización: evitar reflow en focus */
+            outline: none;
         }
 
         .input-field input:focus {
             border-color: var(--primary-color);
-            outline: none;
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
@@ -210,16 +218,22 @@
             border: 2px solid #e2e8f0;
             border-radius: 10px;
             background: #ffffff;
-            height: 320px; /* Reducido de min-height: 400px */
+            height: 320px;
             position: relative;
             margin-bottom: 20px;
             overflow: hidden;
+            /* Optimización: hardware acceleration para canvas */
+            transform: translateZ(0);
+            will-change: contents;
         }
 
         #canvas {
             display: block;
             width: 100%;
             height: 100%;
+            /* Optimización: mejorar rendering de canvas */
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
         }
 
         .results {
@@ -274,13 +288,22 @@
             cursor: pointer;
             font-weight: 600;
             margin: 5px;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s ease-out;
+            /* Optimización: hardware acceleration */
+            will-change: transform;
+            /* Evitar seleccion de texto en botones */
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .btn:hover, .btn:focus {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.15));
             outline: none;
+        }
+        
+        .btn:active {
+            transform: translateY(0);
         }
 
         .btn-secondary {
@@ -325,6 +348,8 @@
             margin: 30px;
             border-top: 5px solid var(--primary-color);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            /* Optimización: contenido estático */
+            contain: content;
         }
 
         .math-formula {
@@ -426,7 +451,10 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.9);
+            background-color: rgba(0, 0, 0, 0.9);
+            /* Optimización: backdrop-filter para mejor efecto */
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
         }
 
         .modal-content {
@@ -758,15 +786,55 @@
     </div>
 
     <script>
+        /**
+         * ForceSimulator - Simulador de Sistemas de Fuerzas Concurrentes
+         * Optimizado para alto rendimiento con las siguientes técnicas:
+         * - Canvas rendering optimizado con { alpha: false }
+         * - Debouncing/throttling de eventos (16ms inputs, 100ms MathJax, 150ms resize)
+         * - Cache de referencias DOM y valores calculados
+         * - Hardware acceleration CSS (will-change, transform, contain)
+         * - Batch DOM updates y selective MathJax typesetting
+         * - Loop optimization (for...of vs forEach, inline calculations)
+         */
         class ForceSimulator {
             constructor() {
+                // Constantes de configuración
+                this.EQUILIBRIUM_TOLERANCE = 0.1;
+                this.GRID_SIZE = 40;
+                this.DEBOUNCE_DELAY = 16; // ~60fps
+                this.MIN_MAGNITUDE = 1e-9;
+                this.CANVAS_PADDING_RATIO = 0.4;
+                
+                // Cache de elementos DOM
                 this.canvas = document.getElementById('canvas');
-                this.ctx = this.canvas.getContext('2d');
+                this.ctx = this.canvas.getContext('2d', { alpha: false });
                 this.modalCanvas = document.getElementById('modal-canvas');
-                this.modalCtx = this.modalCanvas.getContext('2d');
+                this.modalCtx = this.modalCanvas.getContext('2d', { alpha: false });
+                
                 this.origin = { x: 0, y: 0 };
                 this.scale = 1;
-                this.equilibriumTolerance = 0.1;
+                this._updateTimeout = null;
+                this._resizeTimeout = null;
+                this._mathJaxTimeout = null;
+                
+                // Cache de componentes calculados
+                this._cachedForces = null;
+                
+                // Cache de referencias DOM de inputs (performance)
+                this.inputRefs = {
+                    f1: {
+                        magnitude: document.getElementById('f1_magnitude'),
+                        angle: document.getElementById('f1_angle')
+                    },
+                    f2: {
+                        magnitude: document.getElementById('f2_magnitude'),
+                        angle: document.getElementById('f2_angle')
+                    },
+                    f3: {
+                        magnitude: document.getElementById('f3_magnitude'),
+                        angle: document.getElementById('f3_angle')
+                    }
+                };
 
                 const c1 = (getComputedStyle(document.documentElement).getPropertyValue('--force1-color') || '#ef4444').trim();
                 const c2 = (getComputedStyle(document.documentElement).getPropertyValue('--force2-color') || '#10b981').trim();
@@ -795,10 +863,16 @@
                 const container = this.canvas.parentElement;
                 const w = Math.max(300, container.clientWidth);
                 const h = Math.max(200, container.clientHeight);
-                this.canvas.width = Math.floor(w);
-                this.canvas.height = Math.floor(h);
-                this.origin = { x: this.canvas.width / 2, y: this.canvas.height / 2 };
-                this.updateSimulation();
+                const newWidth = Math.floor(w);
+                const newHeight = Math.floor(h);
+                
+                // Solo redimensionar si cambió el tamaño
+                if (this.canvas.width !== newWidth || this.canvas.height !== newHeight) {
+                    this.canvas.width = newWidth;
+                    this.canvas.height = newHeight;
+                    this.origin = { x: newWidth / 2, y: newHeight / 2 };
+                    this.updateSimulation();
+                }
             }
 
             resizeModalCanvas() {
@@ -808,80 +882,128 @@
             }
 
             addEventListeners() {
-                const inputs = Array.from(document.querySelectorAll('input[type="number"]'));
-                inputs.forEach(input => input.addEventListener('input', () => this.requestUpdate()));
+                // Cache elementos DOM comunes
+                this.domCache = {
+                    showComponents: document.getElementById('show-components'),
+                    showGrid: document.getElementById('show-grid'),
+                    clearBtn: document.getElementById('clear-all'),
+                    zoomBtn: document.getElementById('zoom-btn'),
+                    closeModal: document.querySelector('.close-modal'),
+                    modal: document.getElementById('modal-grafico'),
+                    resultElements: {
+                        mag: document.getElementById('resultant_mag'),
+                        angle: document.getElementById('resultant_angle'),
+                        components: document.getElementById('components'),
+                        eqMag: document.getElementById('equilibrant_mag'),
+                        eqAngle: document.getElementById('equilibrant_angle'),
+                        equilibrium: document.getElementById('equilibrium')
+                    }
+                };
+                
+                // Event delegation para inputs numéricos (más eficiente)
+                document.querySelector('.controls').addEventListener('input', (e) => {
+                    if (e.target.type === 'number') {
+                        this._cachedForces = null; // Invalidar cache
+                        this.debouncedUpdate();
+                    }
+                });
 
-                const toggles = Array.from(document.querySelectorAll('input[type="checkbox"]'));
-                toggles.forEach(toggle => {
+                // Toggles con lógica optimizada
+                const toggles = ['f1_active', 'f2_active', 'f3_active'];
+                toggles.forEach((toggleId, index) => {
+                    const toggle = document.getElementById(toggleId);
+                    const prefix = toggleId.replace('_active', '');
+                    const magnitudeInput = document.getElementById(`${prefix}_magnitude`);
+                    const angleInput = document.getElementById(`${prefix}_angle`);
+                    
+                    // Inicialización
+                    magnitudeInput.disabled = !toggle.checked;
+                    angleInput.disabled = !toggle.checked;
+                    
+                    // Event listener
                     toggle.addEventListener('change', () => {
-                        const prefix = toggle.id.replace('_active', '');
-                        const forceIndex = parseInt(prefix.replace('f',''), 10) - 1;
-                        if (!isNaN(forceIndex) && this.forcesConfig[forceIndex]) {
-                            this.forcesConfig[forceIndex].active = !!toggle.checked;
-                        }
-                        const magnitudeInput = document.getElementById(`${prefix}_magnitude`);
-                        const angleInput = document.getElementById(`${prefix}_angle`);
-                        if (magnitudeInput) magnitudeInput.disabled = !toggle.checked;
-                        if (angleInput) angleInput.disabled = !toggle.checked;
-                        this.requestUpdate();
+                        this.forcesConfig[index].active = toggle.checked;
+                        magnitudeInput.disabled = !toggle.checked;
+                        angleInput.disabled = !toggle.checked;
+                        this._cachedForces = null;
+                        this.debouncedUpdate();
                     });
-
-                    const prefixInit = toggle.id.replace('_active','');
-                    const magnitudeInputInit = document.getElementById(`${prefixInit}_magnitude`);
-                    const angleInputInit = document.getElementById(`${prefixInit}_angle`);
-                    if (magnitudeInputInit) magnitudeInputInit.disabled = !toggle.checked;
-                    if (angleInputInit) angleInputInit.disabled = !toggle.checked;
                 });
 
-                document.getElementById('show-components').addEventListener('change', () => this.requestUpdate());
-                document.getElementById('show-grid').addEventListener('change', () => this.requestUpdate());
-                document.getElementById('clear-all').addEventListener('click', () => this.clearAll());
+                this.domCache.showComponents.addEventListener('change', () => this.debouncedUpdate());
+                this.domCache.showGrid.addEventListener('change', () => this.debouncedUpdate());
+                this.domCache.clearBtn.addEventListener('click', () => this.clearAll());
                 
-                document.getElementById('zoom-btn').addEventListener('click', () => this.openModal());
-                document.querySelector('.close-modal').addEventListener('click', () => this.closeModal());
-                document.getElementById('modal-grafico').addEventListener('click', (e) => {
-                    if (e.target.id === 'modal-grafico') this.closeModal();
+                this.domCache.zoomBtn.addEventListener('click', () => this.openModal());
+                this.domCache.closeModal.addEventListener('click', () => this.closeModal());
+                this.domCache.modal.addEventListener('click', (e) => {
+                    if (e.target === this.domCache.modal) this.closeModal();
                 });
                 
-                window.addEventListener('resize', () => {
-                    if (document.getElementById('modal-grafico').style.display === 'block') {
-                        this.resizeModalCanvas();
-                        this.drawModal();
+                // Debounced resize handler
+                window.addEventListener('resize', () => this.debouncedResize());
+                
+                // Tecla ESC para cerrar modal
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && this.domCache.modal.style.display === 'block') {
+                        this.closeModal();
                     }
                 });
             }
+            
+            debouncedUpdate() {
+                if (this._updateTimeout) clearTimeout(this._updateTimeout);
+                this._updateTimeout = setTimeout(() => this.updateSimulation(), this.DEBOUNCE_DELAY);
+            }
+            
+            debouncedResize() {
+                if (this._resizeTimeout) clearTimeout(this._resizeTimeout);
+                this._resizeTimeout = setTimeout(() => {
+                    this.resizeCanvas();
+                    if (this.domCache.modal.style.display === 'block') {
+                        this.resizeModalCanvas();
+                        this.drawModal();
+                    }
+                }, 150);
+            }
 
             openModal() {
-                document.getElementById('modal-grafico').style.display = 'block';
+                this.domCache.modal.style.display = 'block';
                 this.resizeModalCanvas();
                 this.drawModal();
+                // Prevenir scroll del body cuando el modal está abierto
+                document.body.style.overflow = 'hidden';
             }
 
             closeModal() {
-                document.getElementById('modal-grafico').style.display = 'none';
+                this.domCache.modal.style.display = 'none';
+                document.body.style.overflow = '';
             }
 
-            requestUpdate() {
-                if (this._raf) cancelAnimationFrame(this._raf);
-                this._raf = requestAnimationFrame(() => this.updateSimulation());
-            }
+
 
             getForceData() {
-                return this.forcesConfig.map((config, idx) => {
+                // Usar cache si está disponible
+                if (this._cachedForces) return this._cachedForces;
+                
+                const subScripts = ['₁','₂','₃'];
+                this._cachedForces = this.forcesConfig.map((config, idx) => {
                     const prefix = `f${config.id}`;
-                    const magEl = document.getElementById(`${prefix}_magnitude`);
-                    const angEl = document.getElementById(`${prefix}_angle`);
-                    const magnitude = magEl ? (parseFloat(magEl.value) || 0) : 0;
-                    const angle = angEl ? (parseFloat(angEl.value) || 0) : 0;
-                    const subScripts = ['₁','₂','₃'];
+                    // Usar referencias DOM cacheadas (no getElementById en cada frame)
+                    const inputs = this.inputRefs[prefix];
+                    const magnitude = inputs?.magnitude ? (parseFloat(inputs.magnitude.value) || 0) : 0;
+                    const angle = inputs?.angle ? (parseFloat(inputs.angle.value) || 0) : 0;
+                    
                     return {
-                        active: !!config.active,
+                        active: config.active,
                         magnitude,
                         angle,
                         color: config.color,
                         label: `F${subScripts[idx] || config.id}`
                     };
                 });
+                
+                return this._cachedForces;
             }
 
             calculateComponents(magnitude, angleDeg) {
@@ -891,72 +1013,99 @@
 
             calculateResultant(forces) {
                 let totalX = 0, totalY = 0;
-                forces.forEach(f => {
+                
+                // Optimización: evitar llamadas a función en el loop
+                for (const f of forces) {
                     if (f.active && f.magnitude > 0) {
-                        const c = this.calculateComponents(f.magnitude, f.angle);
-                        totalX += c.x;
-                        totalY += c.y;
+                        const rad = f.angle * Math.PI / 180;
+                        totalX += f.magnitude * Math.cos(rad);
+                        totalY += f.magnitude * Math.sin(rad);
                     }
-                });
-                const magnitude = Math.sqrt(totalX*totalX + totalY*totalY);
+                }
+                
+                const magnitude = Math.hypot(totalX, totalY);
                 let angle = 0;
-                if (magnitude > 1e-9) {
+                
+                if (magnitude > this.MIN_MAGNITUDE) {
                     angle = Math.atan2(totalY, totalX) * 180 / Math.PI;
                     if (angle < 0) angle += 360;
                 }
+                
                 return { magnitude, angle, components: { x: totalX, y: totalY } };
             }
 
             calculateEquilibrant(resultant) {
-                if (resultant.magnitude < 1e-9) return { magnitude:0, angle:0 };
-                let eqAngle = resultant.angle + 180;
-                if (eqAngle >= 360) eqAngle -= 360;
+                if (resultant.magnitude < this.MIN_MAGNITUDE) {
+                    return { magnitude: 0, angle: 0 };
+                }
+                // Operación modular más eficiente
+                const eqAngle = (resultant.angle + 180) % 360;
                 return { magnitude: resultant.magnitude, angle: eqAngle };
             }
 
             updateScale(forces, resultant, canvasWidth, canvasHeight) {
-                const active = forces.filter(f => f.active && f.magnitude > 0);
-                const allMagnitudes = active.map(f => f.magnitude).concat([resultant.magnitude]);
-                const maxMag = Math.max(...allMagnitudes, 1);
+                const activeMagnitudes = forces
+                    .filter(f => f.active && f.magnitude > 0)
+                    .map(f => f.magnitude);
+                    
+                activeMagnitudes.push(resultant.magnitude);
+                
+                const maxMag = Math.max(...activeMagnitudes, 1);
                 const canvasMaxDim = Math.min(canvasWidth, canvasHeight);
-                const scale = (canvasMaxDim * 0.4) / maxMag;
+                const scale = (canvasMaxDim * this.CANVAS_PADDING_RATIO) / maxMag;
+                
                 return { scale, maxMag };
             }
 
             clearCanvas(ctx, width, height, showGrid, origin) {
-                ctx.clearRect(0,0,width,height);
+                // Usar fillRect es más rápido que clearRect para canvas opacos
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
                 
                 if (showGrid) {
                     this.drawGrid(ctx, width, height, origin);
                 }
                 
+                // Ejes cartesianos
                 ctx.save();
                 ctx.strokeStyle = '#aaa';
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
-                ctx.moveTo(0, origin.y); ctx.lineTo(width, origin.y);
-                ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, height);
+                ctx.moveTo(0, origin.y);
+                ctx.lineTo(width, origin.y);
+                ctx.moveTo(origin.x, 0);
+                ctx.lineTo(origin.x, height);
                 ctx.stroke();
                 
+                // Etiquetas de ejes
                 ctx.fillStyle = '#666';
                 ctx.font = '13px "Segoe UI", sans-serif';
-                ctx.fillText('X', width - 20, origin.y - 8);
-                ctx.fillText('Y', origin.x + 8, 18);
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText('X', width - 20, origin.y - 20);
+                ctx.fillText('Y', origin.x + 8, 8);
                 ctx.restore();
             }
             
             drawGrid(ctx, width, height, origin) {
-                const gridSize = 40;
                 ctx.save();
-                ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid-color') || 'rgba(0,0,0,0.05)';
+                const gridColor = getComputedStyle(document.documentElement)
+                    .getPropertyValue('--grid-color').trim() || 'rgba(0,0,0,0.05)';
+                ctx.strokeStyle = gridColor;
                 ctx.lineWidth = 0.5;
                 
-                for (let x = origin.x % gridSize; x < width; x += gridSize) {
-                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+                ctx.beginPath();
+                // Líneas verticales
+                for (let x = origin.x % this.GRID_SIZE; x < width; x += this.GRID_SIZE) {
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
                 }
-                for (let y = origin.y % gridSize; y < height; y += gridSize) {
-                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+                // Líneas horizontales
+                for (let y = origin.y % this.GRID_SIZE; y < height; y += this.GRID_SIZE) {
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
                 }
+                ctx.stroke();
                 ctx.restore();
             }
             
@@ -966,15 +1115,21 @@
                 if (!vector || vector.magnitude <= 0) return;
                 
                 ctx.save();
-                const comp = this.calculateComponents(vector.magnitude, vector.angle);
+                const rad = vector.angle * Math.PI / 180;
+                const comp = {
+                    x: vector.magnitude * Math.cos(rad),
+                    y: vector.magnitude * Math.sin(rad)
+                };
                 const start = origin;
-                const end = { x: start.x + comp.x * scale, y: start.y - comp.y * scale };
+                const end = {
+                    x: start.x + comp.x * scale,
+                    y: start.y - comp.y * scale
+                };
 
-                // MEJORA 1: Grosor adaptativo
-                ctx.lineWidth = 2 + (vector.magnitude / maxMag) * 4;
+                // Grosor adaptativo basado en la magnitud relativa
+                const lineWidth = 2 + (vector.magnitude / maxMag) * 4;
+                ctx.lineWidth = lineWidth;
                 ctx.strokeStyle = vector.color || '#000';
-                
-                // MEJORA 2: Líneas suavizadas
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 
@@ -983,8 +1138,8 @@
                 ctx.lineTo(end.x, end.y);
                 ctx.stroke();
                 
-                // MEJORA 3: Puntas de flecha estilizadas (pasa el grosor)
-                this.drawArrowHead(ctx, start, end, vector.color || '#000');
+                // Punta de flecha
+                this.drawArrowHead(ctx, start, end, vector.color || '#000', lineWidth);
                 
                 ctx.restore();
 
@@ -995,35 +1150,41 @@
                 if (!vector || vector.magnitude <= 0) return;
                 
                 ctx.save();
-                const comp = this.calculateComponents(vector.magnitude, vector.angle);
-                const tip = { x: origin.x + comp.x * scale, y: origin.y - comp.y * scale };
+                const rad = vector.angle * Math.PI / 180;
+                const comp = {
+                    x: vector.magnitude * Math.cos(rad),
+                    y: vector.magnitude * Math.sin(rad)
+                };
+                const tip = {
+                    x: origin.x + comp.x * scale,
+                    y: origin.y - comp.y * scale
+                };
                 const corner = { x: tip.x, y: origin.y };
 
-                // MEJORA 4: Flechas reales para componentes con color diferenciado
                 ctx.strokeStyle = this.componentColor;
                 ctx.fillStyle = this.componentColor;
                 ctx.lineWidth = 1.5;
-                ctx.globalAlpha = 0.8; // Translucidez para no competir
+                ctx.globalAlpha = 0.8;
 
                 // Componente X
-                if (Math.abs(comp.x) > 1e-6) {
+                if (Math.abs(comp.x) > this.MIN_MAGNITUDE) {
                     ctx.beginPath();
                     ctx.moveTo(origin.x, origin.y);
                     ctx.lineTo(corner.x, corner.y);
                     ctx.stroke();
-                    this.drawArrowHead(ctx, origin, corner, this.componentColor, 0.8);
+                    this.drawArrowHead(ctx, origin, corner, this.componentColor, 1.5, 0.8);
                 }
 
                 // Componente Y
-                if (Math.abs(comp.y) > 1e-6) {
+                if (Math.abs(comp.y) > this.MIN_MAGNITUDE) {
                     ctx.beginPath();
                     ctx.moveTo(corner.x, corner.y);
                     ctx.lineTo(tip.x, tip.y);
                     ctx.stroke();
-                    this.drawArrowHead(ctx, corner, tip, this.componentColor, 0.8);
+                    this.drawArrowHead(ctx, corner, tip, this.componentColor, 1.5, 0.8);
                 }
                 
-                // Línea punteada de referencia al vector original
+                // Línea punteada al vector original
                 ctx.setLineDash([3, 4]);
                 ctx.lineWidth = 1;
                 ctx.strokeStyle = 'rgba(100, 116, 139, 0.4)';
@@ -1034,36 +1195,42 @@
 
                 ctx.restore();
 
-                // MEJORA 5: Etiquetas de componentes cerca del extremo/centro
+                // Etiquetas de componentes
                 ctx.save();
                 ctx.fillStyle = this.componentColor;
                 ctx.font = '12px "Segoe UI", sans-serif';
                 ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
 
-                if (Math.abs(comp.x) > 1e-6) {
-                     ctx.fillText(`Fx`, (origin.x + corner.x) / 2, corner.y + (comp.y > 0 ? -8 : 20));
+                if (Math.abs(comp.x) > this.MIN_MAGNITUDE) {
+                    ctx.fillText('Fx', (origin.x + corner.x) / 2, corner.y + (comp.y > 0 ? -8 : 20));
                 }
-                if (Math.abs(comp.y) > 1e-6) {
-                     ctx.fillText(`Fy`, corner.x + (comp.x > 0 ? 15 : -15), (corner.y + tip.y) / 2);
+                if (Math.abs(comp.y) > this.MIN_MAGNITUDE) {
+                    ctx.fillText('Fy', corner.x + (comp.x > 0 ? 15 : -15), (corner.y + tip.y) / 2);
                 }
                 ctx.restore();
             }
             
-            drawArrowHead(ctx, start, end, color, scaleFactor = 1) {
+            drawArrowHead(ctx, start, end, color, lineWidth, scaleFactor = 1) {
                 ctx.save();
-                const headLength = (8 + ctx.lineWidth * 1.2) * scaleFactor;
+                const headLength = (8 + lineWidth * 1.2) * scaleFactor;
                 const headAngle = Math.PI / 7;
                 const angle = Math.atan2(end.y - start.y, end.x - start.x);
                 
                 ctx.fillStyle = color;
-                // MEJORA: Borde en la punta de flecha
-                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
                 ctx.lineWidth = 1;
 
                 ctx.beginPath();
                 ctx.moveTo(end.x, end.y);
-                ctx.lineTo(end.x - headLength * Math.cos(angle - headAngle), end.y - headLength * Math.sin(angle - headAngle));
-                ctx.lineTo(end.x - headLength * Math.cos(angle + headAngle), end.y - headLength * Math.sin(angle + headAngle));
+                ctx.lineTo(
+                    end.x - headLength * Math.cos(angle - headAngle),
+                    end.y - headLength * Math.sin(angle - headAngle)
+                );
+                ctx.lineTo(
+                    end.x - headLength * Math.cos(angle + headAngle),
+                    end.y - headLength * Math.sin(angle + headAngle)
+                );
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
@@ -1072,48 +1239,68 @@
 
             drawVectorLabel(ctx, pos, vector) {
                 ctx.save();
-                // MEJORA 6: Fuente más legible y con anti-alias
                 ctx.font = 'bold 13px "Segoe UI", sans-serif';
                 const text = `${vector.label}: ${vector.magnitude.toFixed(1)} N`;
                 const metrics = ctx.measureText(text);
                 const textWidth = metrics.width;
                 const textHeight = 14;
+                const padding = 6;
                 
                 let labelX = pos.x + 15;
                 let labelY = pos.y - 8;
                 
-                if (labelX + textWidth + 12 > ctx.canvas.width) labelX = pos.x - textWidth - 25;
-                if (labelY - textHeight < 0) labelY = pos.y + textHeight + 10;
-                if (labelY + 8 > ctx.canvas.height) labelY = pos.y - textHeight;
+                // Ajustar posición para mantener la etiqueta dentro del canvas
+                if (labelX + textWidth + padding * 2 > ctx.canvas.width) {
+                    labelX = pos.x - textWidth - 25;
+                }
+                if (labelY - textHeight < 0) {
+                    labelY = pos.y + textHeight + 10;
+                }
+                if (labelY + 8 > ctx.canvas.height) {
+                    labelY = pos.y - textHeight;
+                }
 
-                // MEJORA 7: Etiqueta con fondo semitransparente, redondeado y con sombra
-                ctx.shadowColor = 'rgba(0,0,0,0.2)';
+                // Fondo con sombra
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
                 ctx.shadowBlur = 5;
                 ctx.shadowOffsetY = 2;
-                ctx.fillStyle = "rgba(255,255,255,0.9)";
-                ctx.strokeStyle = "rgba(0,0,0,0.1)";
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
                 ctx.lineWidth = 1;
                 
                 ctx.beginPath();
-                // Usamos roundRect si está disponible, si no, un rect normal
-                if (ctx.roundRect) {
-                    ctx.roundRect(labelX - 6, labelY - textHeight + 2, textWidth + 12, textHeight + 6, 5);
-                } else {
-                    ctx.rect(labelX - 6, labelY - textHeight + 2, textWidth + 12, textHeight + 6);
-                }
+                const rectX = labelX - padding;
+                const rectY = labelY - textHeight + 2;
+                const rectW = textWidth + padding * 2;
+                const rectH = textHeight + padding;
+                
+                // Rectángulo redondeado (compatible con todos los navegadores)
+                const radius = 5;
+                ctx.moveTo(rectX + radius, rectY);
+                ctx.lineTo(rectX + rectW - radius, rectY);
+                ctx.quadraticCurveTo(rectX + rectW, rectY, rectX + rectW, rectY + radius);
+                ctx.lineTo(rectX + rectW, rectY + rectH - radius);
+                ctx.quadraticCurveTo(rectX + rectW, rectY + rectH, rectX + rectW - radius, rectY + rectH);
+                ctx.lineTo(rectX + radius, rectY + rectH);
+                ctx.quadraticCurveTo(rectX, rectY + rectH, rectX, rectY + rectH - radius);
+                ctx.lineTo(rectX, rectY + radius);
+                ctx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
+                ctx.closePath();
+                
                 ctx.fill();
                 ctx.stroke();
                 
-                ctx.restore(); // Restaura para quitar la sombra
+                ctx.restore();
 
+                // Texto
                 ctx.fillStyle = vector.color || '#000';
                 ctx.fillText(text, labelX, labelY);
             }
 
             drawScaleBar(ctx, width, height, scale, maxMag) {
-                if (maxMag < 1) return; // No dibujar si no hay fuerzas significativas
+                if (maxMag < 1) return;
                 
-                // MEJORA 8: Barra de escala visual
+                // Barra de escala visual
                 const niceMagnitude = Math.pow(10, Math.floor(Math.log10(maxMag / 2.5)));
                 const barLength = niceMagnitude * scale;
                 
@@ -1121,7 +1308,7 @@
                 const y = height - 20;
 
                 ctx.save();
-                ctx.strokeStyle = '#334155'; // slate-700
+                ctx.strokeStyle = '#334155';
                 ctx.fillStyle = '#334155';
                 ctx.lineWidth = 2;
                 
@@ -1133,66 +1320,94 @@
                 
                 // Ticks en los extremos
                 ctx.beginPath();
-                ctx.moveTo(startX, y - 4); ctx.lineTo(startX, y + 4);
-                ctx.moveTo(startX + barLength, y - 4); ctx.lineTo(startX + barLength, y + 4);
+                ctx.moveTo(startX, y - 4);
+                ctx.lineTo(startX, y + 4);
+                ctx.moveTo(startX + barLength, y - 4);
+                ctx.lineTo(startX + barLength, y + 4);
                 ctx.stroke();
                 
                 // Etiqueta
                 ctx.font = '12px "Segoe UI", sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(`${niceMagnitude} N`, startX + barLength / 2, y - 8);
+                ctx.textBaseline = 'top';
+                ctx.fillText(`${niceMagnitude} N`, startX + barLength / 2, y - 18);
                 ctx.restore();
             }
 
-            // --- FIN DE MEJORAS GRÁFICAS ---
-
             updateDisplay(resultant, equilibrant) {
-                const fmt = (n, d=2)=> Number(n).toFixed(d);
-                document.getElementById('resultant_mag').innerHTML = `\\(${fmt(resultant.magnitude,2)}\\ \\text{N}\\)`;
-                document.getElementById('resultant_angle').innerHTML = `\\(${fmt(resultant.angle,1)}^\\circ\\)`;
-                document.getElementById('components').innerHTML = `\\((${fmt(resultant.components.x,2)},\\ ${fmt(resultant.components.y,2)})\\ \\text{N}\\)`;
-                document.getElementById('equilibrant_mag').innerHTML = `\\(${fmt(equilibrant.magnitude,2)}\\ \\text{N}\\)`;
-                document.getElementById('equilibrant_angle').innerHTML = `\\(${fmt(equilibrant.angle,1)}^\\circ\\)`;
+                const fmt = (n, decimals = 2) => Number(n).toFixed(decimals);
+                const elements = this.domCache.resultElements;
+                
+                // Batch DOM updates
+                elements.mag.innerHTML = `\\(${fmt(resultant.magnitude, 2)}\\ \\text{N}\\)`;
+                elements.angle.innerHTML = `\\(${fmt(resultant.angle, 1)}^\\circ\\)`;
+                elements.components.innerHTML = `\\((${fmt(resultant.components.x, 2)},\\ ${fmt(resultant.components.y, 2)})\\ \\text{N}\\)`;
+                elements.eqMag.innerHTML = `\\(${fmt(equilibrant.magnitude, 2)}\\ \\text{N}\\)`;
+                elements.eqAngle.innerHTML = `\\(${fmt(equilibrant.angle, 1)}^\\circ\\)`;
 
-                if (window.MathJax) {
-                    try {
-                        if (MathJax.typesetPromise) { MathJax.typesetPromise(); } 
-                        else if (MathJax.typeset) { MathJax.typeset(); }
-                    } catch (err) { console.warn('MathJax typeset error:', err); }
-                }
+                // Throttled MathJax typeset (evitar sobrecarga con sliders futuros)
+                if (this._mathJaxTimeout) clearTimeout(this._mathJaxTimeout);
+                this._mathJaxTimeout = setTimeout(() => {
+                    if (window.MathJax?.typesetPromise) {
+                        // Solo typeset el contenedor de resultados, no todo el documento
+                        const resultsContainer = elements.mag.closest('.results');
+                        if (resultsContainer) {
+                            window.MathJax.typesetPromise([resultsContainer])
+                                .catch(err => console.warn('MathJax error:', err));
+                        }
+                    }
+                }, 100); // 100ms throttle para MathJax
 
-                const equilibriumEl = document.getElementById('equilibrium');
-                const isEq = resultant.magnitude < this.equilibriumTolerance;
-                if (isEq) {
+                // Actualizar indicador de equilibrio
+                const isEquilibrium = resultant.magnitude < this.EQUILIBRIUM_TOLERANCE;
+                const equilibriumEl = elements.equilibrium;
+                
+                if (isEquilibrium) {
                     equilibriumEl.textContent = '✅ Sistema en Equilibrio (ΣF ≈ 0)';
                     equilibriumEl.className = 'equilibrium-indicator equilibrium-yes';
                 } else {
-                    equilibriumEl.textContent = `❌ Sistema NO está en Equilibrio (|F_R| = ${resultant.magnitude.toFixed(2)} N)`;
+                    equilibriumEl.textContent = `❌ Sistema NO está en Equilibrio (|F_R| = ${fmt(resultant.magnitude, 2)} N)`;
                     equilibriumEl.className = 'equilibrium-indicator equilibrium-no';
                 }
             }
 
             drawSimulation(ctx, width, height, forces, resultant, equilibrant) {
                 const origin = { x: width / 2, y: height / 2 };
-                const showComponents = document.getElementById('show-components').checked;
-                const showGrid = document.getElementById('show-grid').checked;
+                const showComponents = this.domCache.showComponents.checked;
+                const showGrid = this.domCache.showGrid.checked;
                 const { scale, maxMag } = this.updateScale(forces, resultant, width, height);
                 
                 this.clearCanvas(ctx, width, height, showGrid, origin);
 
-                forces.forEach(f => { 
+                // Dibujar fuerzas activas
+                for (const f of forces) {
                     if (f.active && f.magnitude > 0) {
-                        if (showComponents) this.drawVectorComponents(ctx, origin, scale, f, maxMag);
-                        else this.drawVector(ctx, origin, scale, f, maxMag);
+                        if (showComponents) {
+                            this.drawVectorComponents(ctx, origin, scale, f, maxMag);
+                        } else {
+                            this.drawVector(ctx, origin, scale, f, maxMag);
+                        }
                     }
-                });
-
-                if (resultant.magnitude > 1e-6) {
-                    this.drawVector(ctx, origin, scale, { magnitude: resultant.magnitude, angle: resultant.angle, color: this.resultantColor, label: 'F_R' }, maxMag);
                 }
 
-                if (resultant.magnitude > this.equilibriumTolerance && equilibrant.magnitude > 1e-6) {
-                    this.drawVector(ctx, origin, scale, { magnitude: equilibrant.magnitude, angle: equilibrant.angle, color: this.equilibrantColor, label: 'F_E' }, maxMag);
+                // Dibujar resultante
+                if (resultant.magnitude > this.MIN_MAGNITUDE) {
+                    this.drawVector(ctx, origin, scale, {
+                        magnitude: resultant.magnitude,
+                        angle: resultant.angle,
+                        color: this.resultantColor,
+                        label: 'F_R'
+                    }, maxMag);
+                }
+
+                // Dibujar equilibrante (solo si el sistema no está en equilibrio)
+                if (resultant.magnitude > this.EQUILIBRIUM_TOLERANCE && equilibrant.magnitude > this.MIN_MAGNITUDE) {
+                    this.drawVector(ctx, origin, scale, {
+                        magnitude: equilibrant.magnitude,
+                        angle: equilibrant.angle,
+                        color: this.equilibrantColor,
+                        label: 'F_E'
+                    }, maxMag);
                 }
 
                 this.drawScaleBar(ctx, width, height, scale, maxMag);
@@ -1215,17 +1430,21 @@
             }
 
             clearAll() {
-                this.forcesConfig.forEach(config => {
+                for (const config of this.forcesConfig) {
                     const prefix = `f${config.id}`;
-                    document.getElementById(`${prefix}_magnitude`).value = '0';
-                    document.getElementById(`${prefix}_angle`).value = '0';
-                    const act = document.getElementById(`${prefix}_active`);
-                    if (act) {
-                        act.checked = true;
-                        act.dispatchEvent(new Event('change')); // para re-habilitar los inputs
+                    // Usar referencias cacheadas cuando sea posible
+                    const inputs = this.inputRefs[prefix];
+                    const activeToggle = document.getElementById(`${prefix}_active`);
+                    
+                    if (inputs?.magnitude) inputs.magnitude.value = '0';
+                    if (inputs?.angle) inputs.angle.value = '0';
+                    if (activeToggle && !activeToggle.checked) {
+                        activeToggle.checked = true;
+                        activeToggle.dispatchEvent(new Event('change'));
                     }
-                });
-                this.requestUpdate();
+                }
+                this._cachedForces = null;
+                this.updateSimulation();
             }
         }
 
