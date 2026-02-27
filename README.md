@@ -15,15 +15,6 @@ Este proyecto es una herramienta educativa interactiva diseñada para visualizar
 
 ---
 
-## Tecnologías Utilizadas
-
-* **HTML5 & CSS3**: Diseño responsivo y moderno con aceleración por hardware (`will-change`, `transform`).
-* **Vanilla JavaScript (ES6+)**: Lógica del simulador encapsulada en clases para mayor limpieza y eficiencia.
-* **Canvas API**: Renderizado gráfico de vectores y cuadrículas dinámicas.
-* **MathJax 3**: Renderizado de fórmulas matemáticas.
-
----
-
 ## Requisitos e Instalación
 
 No requiere instalación de servidores ni dependencias externas complejas. Solo necesitas un navegador moderno.
